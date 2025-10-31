@@ -1,26 +1,24 @@
-# Kweli — Fighting Africa's Counterfeit Crisis with Blockchain
+# Kweli
 
 > **Built for Hedera Hack Africa 2025**  
-> Protecting lives through verified product authentication
-
-Every year, **500,000 people** die in Sub-Saharan Africa because of fake medicines and counterfeit products. In Nigeria alone, 70% of pharmaceutical products in circulation are either fake or substandard. This isn't just a business problem—it's a human tragedy that costs lives and destroys trust.
+> Know the kweli, it will set you free.
 
 Kweli changes that. We're building a blockchain-powered authentication platform that makes it dead simple for businesses to protect their products and for consumers to verify what they're buying—all while earning rewards for doing the right thing. Businesses help save lives, get thier trust and value back users earn $VFY
 
 ---
 
-## 📋 Submission Materials
+## Submission Materials
 
-- **📊 Pitch Deck:** [View our pitch deck here](YOUR_PITCH_DECK_LINK)
-- **🎓 Hedera Certification:** [View certification](YOUR_CERTIFICATION_LINK)
-- **🔗 Live Demo:** [kweli-web.vercel.app](https://kweli-web.vercel.app)
-- **📱 Mobile App:** Available via Expo (setup instructions below)
+- **Pitch Deck:** [View our pitch deck here](YOUR_PITCH_DECK_LINK)
+- **Hedera Certification:** [View certification](./submission-material/Hashgraph%20Certificate.pdf)
+- **Live Demo:** [kweli-web.vercel.app](https://kweli-web.vercel.app)
+- **Mobile App:** [Try with Expo](https://expo.dev/preview/update?message=Added+index+entry+point&updateRuntimeVersion=1.0.0&createdAt=2025-10-28T05%3A39%3A29.412Z&slug=exp&projectId=aea820d4-6839-4ab6-a9ef-be6944be8cf0&group=f17efc63-436e-42dd-b5f1-a78ad467a46e)
 
 ---
 
-## 🎯 The Problem We're Solving
+## Inspiration
 
-Let me paint you a picture of what's really happening on the ground:
+Every year, 500,000 people die in Sub-Saharan Africa because of fake medicines and counterfeit products. In Nigeria alone, 70% of pharmaceutical products in circulation are either fake or substandard. This isn't just a business problem—it's a human tragedy that costs lives and destroys trust.
 
 ### The Numbers That Keep Us Up at Night
 - **$1.79 trillion** — that's how big the global counterfeit market will be by 2030. A 75% jump from 2023.
@@ -34,31 +32,21 @@ I've seen this firsthand. Walk into any market in Lagos, and you'll find:
 - **₦200 billion** ($130M) lost every year just from counterfeit drugs
 - **240+ illegal production shops** discovered in just one market raid in Aba
 - **60% of smartphones** in some areas are knockoffs
-
-Bloomberg didn't mince words when they called Nigeria "the most counterfeit market in the developing world." That's not a badge anyone wants to wear.
-
-### It's Not Just Healthcare
-- 40% of Pfizer medicines in Nigeria are illegally imported fakes
-- NAFDAC destroyed $750,000 worth of counterfeit goods in a single raid
-- Families lose their savings buying products that don't work—or worse, harm them
-
-This has to stop. And that's exactly why we built Kweli.
+- **40% of Pfizer medicines in Nigeria are illegally imported fakes**
 
 ---
 
-## 💡 Our Solution
+## Our Solution
 
-Kweli is a blockchain-powered authentication platform that makes product verification as easy as scanning a QR code. No complex integrations, no expensive overhauls—just straightforward protection built on Hedera's lightning-fast infrastructure.
+Kweli is a blockchain-powered authentication platform that makes product verification as easy as scanning a QR code. No complex integrations, no expensive overhauls, just straightforward protection built on Hedera's lightning-fast infrastructure.
 
-### How It Works (The Simple Version)
+### How It Works
 
-1. **Businesses** register their products on our dashboard in minutes
-2. We generate a **unique QR code** for each product, secured on the Hedera blockchain
+1. **Businesses** Creates company accounts register their products on our dashboard in minutes and upload thier product design as template
+2. We generate a **unique QR code** for each product, secured on the Hedera blockchain, ready to download as individual qrcode or directly embed it to products design, this removes a huge pain point and extra cost.
 3. **Consumers** scan the code with our mobile app (or upload a photo for AI verification)
 4. If it's legit, they get confirmation instantly—plus **VFY tokens** they can redeem for airtime or data
 5. Everything is **tamper-proof** and recorded permanently on the blockchain
-
-That's it. No PhD required.
 
 ---
 
@@ -82,7 +70,7 @@ Most anti-counterfeit solutions require you to redesign your entire packaging li
 - Generate QR codes in seconds
 - Track verifications in real-time
 - View supply chain analytics
-- Set up in **48 hours**, not 6 months
+- Set up in **Minutes**, not 6 months
 
 ### 📱 **Mobile-First Design**
 Our app works where your customers are—on their phones, even with spotty internet:
@@ -290,19 +278,18 @@ eas build
 
 ---
 
-## 🎯 What's Next
+## What's Next
 
 We're just getting started. Here's what we're building next:
 
-1. **Offline AI verification** (using on-device models)
-2. **SMS-based verification** (for feature phones)
-3. **Partnerships with NAFDAC** (Nigeria's FDA equivalent)
-4. **Supply chain tracking** (full journey from manufacturer to consumer)
-5. **Token redemption partnerships** (telcos, retailers, pharmacies)
+1. **DIve Deeper into AI verification** (using and training specialised models)
+2. **Partnerships with NAFDAC** (Nigeria's FDA equivalent)
+3. **Supply chain tracking** (full journey from manufacturer to consumer)
+4. **Token redemption partnerships** (telcos, retailers, pharmacies)
 
 ---
 
-## 🤝 Contributing
+##  Contributing
 
 Want to help fight counterfeits? Here's how:
 
@@ -316,13 +303,13 @@ We review PRs within 48 hours.
 
 ---
 
-## 📄 License
+## License
 
 MIT License — Use it, modify it, build on it. Just make the world a little safer.
 
 ---
 
-## 🙏 Thanks To
+## Thanks To
 
 - **Hedera** for making blockchain actually usable in Africa
 - **OpenAI** for the vision models that power our AI verification
@@ -343,8 +330,4 @@ Thanks for taking the time to check out Kweli. Let's build something that matter
 
 ---
 
-**Built with ❤️ in Lagos for Africa and the world**
-
-🔗 **Live Demo:** [kweli-web.vercel.app](https://kweli-web.vercel.app)  
-📧 **Contact:** [Your Email]  
-🐦 **Twitter:** [Your Handle]
+🔗 **Live Demo:** [kweli-web.vercel.app](https://kweli-web.vercel.app) 
