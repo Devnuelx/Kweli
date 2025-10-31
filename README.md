@@ -3,7 +3,7 @@
 > **Built for Hedera Hack Africa 2025**  
 > Know the kweli, it will set you free.
 
-Kweli changes that. We're building a blockchain-powered authentication platform that makes it dead simple for businesses to protect their products and for consumers to verify what they're buying—all while earning rewards for doing the right thing. Businesses help save lives, get thier trust and value back users earn $VFY
+We're building a blockchain-powered authentication platform that makes it super simple for businesses to protect their products and for consumers to verify what they're buying—all while earning rewards for doing the right thing. Businesses help save lives, get thier trust and value back users earn $VFY
 
 ---
 
