@@ -1,4 +1,4 @@
-import sharp from 'sharp';
+import Jimp from 'jimp';
 import Tesseract from 'tesseract.js';
 import { supabase } from '@/lib/supabase/supabase';
 
@@ -23,10 +23,10 @@ export class QrPlacementDetector {
 
     try {
       // Get image metadata
-      const metadata = await sharp(imageBuffer).metadata();
+      const baseImage = await Jimp.read(imageBuffer);
       const imageDimensions = {
-        width: metadata.width,
-        height: metadata.height
+        width: baseImage.bitmap.width,
+        height: baseImage.bitmap.height
       };
 
       // Try color placeholder detection
@@ -95,12 +95,10 @@ export class QrPlacementDetector {
       }
 
       // Get raw pixel data
-      const { data, info } = await sharp(imageBuffer)
-        .raw()
-        .toBuffer({ resolveWithObject: true });
-
-      const { width, height, channels } = info;
-      const tolerance = 30; // Color matching tolerance
+      const image = await Jimp.read(imageBuffer);
+      const { data, width, height } = image.bitmap;
+      const channels = 4;
+      const tolerance = 30;
       
       // Find colored regions
       const regions = this.findColoredRegions(
@@ -160,9 +158,8 @@ export class QrPlacementDetector {
   static async detectTextMarker(imageBuffer, textMarker, imageDimensions) {
     try {
       // Convert image to PNG for Tesseract
-      const pngBuffer = await sharp(imageBuffer)
-        .png()
-        .toBuffer();
+      const pngBuffer = await (await Jimp.read(imageBuffer))
+        .getBufferAsync(Jimp.MIME_PNG);
 
       // Perform OCR
       const { data } = await Tesseract.recognize(pngBuffer, 'eng', {
@@ -171,7 +168,6 @@ export class QrPlacementDetector {
 
       // Find text marker in OCR results
       const words = data.words || [];
-      const markerWords = textMarker.split(/\s+/);
       
       for (let i = 0; i < words.length; i++) {
         const word = words[i];

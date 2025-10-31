@@ -23,6 +23,10 @@ export default function DashboardPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [modalData, setModalData] = useState(null);
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     fetchStats();
@@ -121,12 +125,16 @@ export default function DashboardPage() {
         });
         setShowProductModal(false);
         fetchStats();
-        alert('Product registered successfully!');
+        // Show success modal with real data returned from the API
+        setModalData({ count: data.count || 0, products: data.products || [] });
+        setShowSuccessModal(true);
       } else {
-        alert('Error: ' + (data.error || 'Unknown error'));
+        setErrorMessage(data.error || 'Unknown error');
+        setShowErrorModal(true);
       }
     } catch (error) {
-      alert('Error: ' + error.message);
+      setErrorMessage(error.message || 'An unexpected error occurred');
+      setShowErrorModal(true);
     } finally {
       setSubmitting(false);
     }
@@ -398,6 +406,22 @@ export default function DashboardPage() {
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0A0E27] border border-white/20 rounded-3xl p-6 max-w-md w-full text-center">
+            <h3 className="text-xl font-bold mb-2">Product registered</h3>
+            <p className="text-sm text-gray-300 mb-6">Your products were registered successfully and are now available in the dashboard.</p>
+            <div className="flex justify-center">
+              <button
+                onClick={() => setShowSuccessModal(false)}
+                className="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl font-medium hover:shadow-lg"
+              >
+                OK
+              </button>
             </div>
           </div>
         </div>

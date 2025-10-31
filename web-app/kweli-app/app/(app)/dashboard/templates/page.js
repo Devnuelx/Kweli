@@ -93,10 +93,26 @@ export default function TemplatesPage() {
         body: uploadFormData
       });
 
-      const uploadData = await uploadResponse.json();
+      // Some server errors or runtime failures can return an empty body which
+      // makes response.json() throw "Unexpected end of JSON input". Parse
+      // safely: read text first and attempt JSON.parse only if non-empty.
+      const uploadText = await uploadResponse.text();
+      let uploadData = null;
+      if (uploadText) {
+        try {
+          uploadData = JSON.parse(uploadText);
+        } catch (err) {
+          // Not JSON — treat as error
+          throw new Error(`Upload failed (invalid server response)`);
+        }
+      }
 
-      if (!uploadResponse.ok || !uploadData.success) {
-        throw new Error(uploadData.error || 'Upload failed');
+      if (!uploadResponse.ok) {
+        throw new Error((uploadData && uploadData.error) || `Upload failed (status ${uploadResponse.status})`);
+      }
+
+      if (!uploadData || !uploadData.success) {
+        throw new Error((uploadData && uploadData.error) || 'Upload failed');
       }
 
       // Step 2: Create template

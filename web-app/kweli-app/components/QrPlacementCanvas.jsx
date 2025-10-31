@@ -6,11 +6,7 @@ import { AlertCircle } from 'lucide-react';
 
 /**
  * Interactive QR Placement Canvas
- * Allows users to drag and resize QR placement box on design preview
- * 
- * PRINCIPLE: Keep internal state in SCALED coordinates (canvas space),
- * only convert to original coordinates when notifying parent.
- * This prevents feedback loops and precision issues.
+ * FIXED: Now saves placement in ORIGINAL image coordinates, not scaled canvas coordinates
  */
 export default function QrPlacementCanvas({ 
   imageUrl, 
@@ -21,8 +17,9 @@ export default function QrPlacementCanvas({
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const imageRef = useRef(null);
-  const lastNotifiedRef = useRef(null); // Track last notified placement to prevent duplicate notifications
+  const lastNotifiedRef = useRef(null);
   
+  // Store placement in ORIGINAL image coordinates
   const [placement, setPlacement] = useState(initialPlacement ? { ...initialPlacement } : {
     x: 100,
     y: 100,
@@ -36,7 +33,7 @@ export default function QrPlacementCanvas({
   const [imageLoaded, setImageLoaded] = useState(false);
   const [error, setError] = useState(null);
 
-  // Load image only once
+  // Load image
   useEffect(() => {
     if (!imageUrl) {
       setError('No image URL provided');
@@ -63,7 +60,7 @@ export default function QrPlacementCanvas({
     };
   }, [imageUrl]);
 
-  // Update placement when initialPlacement changes from parent
+  // Update placement when initialPlacement changes
   useEffect(() => {
     if (initialPlacement) {
       setPlacement({ ...initialPlacement });
@@ -98,7 +95,27 @@ export default function QrPlacementCanvas({
     }
   }, [imageDimensions, imageLoaded]);
 
-  // Draw canvas - memoized to prevent recreating the function
+  // Helper: Convert original coordinates to scaled canvas coordinates
+  const toCanvasCoords = useCallback((original) => {
+    return {
+      x: original.x * scale,
+      y: original.y * scale,
+      width: original.width * scale,
+      height: original.height * scale
+    };
+  }, [scale]);
+
+  // Helper: Convert scaled canvas coordinates to original image coordinates
+  const toOriginalCoords = useCallback((canvas) => {
+    return {
+      x: Math.round(canvas.x / scale),
+      y: Math.round(canvas.y / scale),
+      width: Math.round(canvas.width / scale),
+      height: Math.round(canvas.height / scale)
+    };
+  }, [scale]);
+
+  // Draw canvas
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const img = imageRef.current;
@@ -112,7 +129,7 @@ export default function QrPlacementCanvas({
         return;
       }
       
-      // Set canvas size
+      // Set canvas size to scaled dimensions
       canvas.width = img.width * scale;
       canvas.height = img.height * scale;
 
@@ -120,15 +137,28 @@ export default function QrPlacementCanvas({
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
+      // Convert placement to canvas coordinates for drawing
+      const canvasPlacement = toCanvasCoords(placement);
+
       // Draw QR placement box with border
       ctx.strokeStyle = '#22c55e';
       ctx.lineWidth = 3;
       ctx.setLineDash([10, 5]);
-      ctx.strokeRect(placement.x, placement.y, placement.width, placement.height);
+      ctx.strokeRect(
+        canvasPlacement.x, 
+        canvasPlacement.y, 
+        canvasPlacement.width, 
+        canvasPlacement.height
+      );
 
       // Draw semi-transparent overlay
       ctx.fillStyle = 'rgba(34, 197, 94, 0.1)';
-      ctx.fillRect(placement.x, placement.y, placement.width, placement.height);
+      ctx.fillRect(
+        canvasPlacement.x, 
+        canvasPlacement.y, 
+        canvasPlacement.width, 
+        canvasPlacement.height
+      );
 
       // Draw resize handles
       ctx.fillStyle = '#22c55e';
@@ -136,10 +166,10 @@ export default function QrPlacementCanvas({
       const handleSize = 12;
       
       const handles = [
-        { x: placement.x, y: placement.y }, // Top-left
-        { x: placement.x + placement.width, y: placement.y }, // Top-right
-        { x: placement.x, y: placement.y + placement.height }, // Bottom-left
-        { x: placement.x + placement.width, y: placement.y + placement.height } // Bottom-right
+        { x: canvasPlacement.x, y: canvasPlacement.y },
+        { x: canvasPlacement.x + canvasPlacement.width, y: canvasPlacement.y },
+        { x: canvasPlacement.x, y: canvasPlacement.y + canvasPlacement.height },
+        { x: canvasPlacement.x + canvasPlacement.width, y: canvasPlacement.y + canvasPlacement.height }
       ];
       
       handles.forEach(handle => {
@@ -153,8 +183,8 @@ export default function QrPlacementCanvas({
       ctx.textBaseline = 'middle';
       ctx.fillText(
         'QR CODE HERE',
-        placement.x + placement.width / 2,
-        placement.y + placement.height / 2
+        canvasPlacement.x + canvasPlacement.width / 2,
+        canvasPlacement.y + canvasPlacement.height / 2
       );
       
       setError(null);
@@ -162,7 +192,7 @@ export default function QrPlacementCanvas({
       setError('Failed to draw canvas');
       console.error(err);
     }
-  }, [placement.x, placement.y, placement.width, placement.height, scale]);
+  }, [placement, scale, toCanvasCoords]);
 
   // Redraw when placement or scale changes
   useEffect(() => {
@@ -170,23 +200,24 @@ export default function QrPlacementCanvas({
     drawCanvas();
   }, [imageLoaded, drawCanvas]);
 
-  // Notify parent of placement changes - only when user stops interacting
+  // Notify parent of placement changes (in ORIGINAL coordinates)
   useEffect(() => {
     if (!onPlacementChange || isDragging || isResizing) return;
 
     const timeoutId = setTimeout(() => {
-      // Check if placement has actually changed from last notification
+      // Check if placement has actually changed
       if (lastNotifiedRef.current &&
           lastNotifiedRef.current.x === placement.x &&
           lastNotifiedRef.current.y === placement.y &&
           lastNotifiedRef.current.width === placement.width &&
           lastNotifiedRef.current.height === placement.height) {
-        return; // No change, don't notify
+        return;
       }
 
       lastNotifiedRef.current = { ...placement };
+      // Send ORIGINAL coordinates to parent (already in original space)
       onPlacementChange({ ...placement });
-    }, 300); // Debounce to give user time to finish dragging
+    }, 300);
 
     return () => clearTimeout(timeoutId);
   }, [placement, isDragging, isResizing, onPlacementChange]);
@@ -196,40 +227,47 @@ export default function QrPlacementCanvas({
     if (!canvas) return { x: 0, y: 0 };
     
     const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
     return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY
     };
   };
 
   const isInResizeHandle = (mouseX, mouseY) => {
     const handleSize = 12;
+    const canvasPlacement = toCanvasCoords(placement);
+    
     const handles = [
-      { x: placement.x, y: placement.y },
-      { x: placement.x + placement.width, y: placement.y },
-      { x: placement.x, y: placement.y + placement.height },
-      { x: placement.x + placement.width, y: placement.y + placement.height }
+      { x: canvasPlacement.x, y: canvasPlacement.y },
+      { x: canvasPlacement.x + canvasPlacement.width, y: canvasPlacement.y },
+      { x: canvasPlacement.x, y: canvasPlacement.y + canvasPlacement.height },
+      { x: canvasPlacement.x + canvasPlacement.width, y: canvasPlacement.y + canvasPlacement.height }
     ];
 
-    for (const handle of handles) {
+    for (let i = 0; i < handles.length; i++) {
+      const handle = handles[i];
       if (
         mouseX >= handle.x - handleSize/2 &&
         mouseX <= handle.x + handleSize/2 &&
         mouseY >= handle.y - handleSize/2 &&
         mouseY <= handle.y + handleSize/2
       ) {
-        return handle;
+        return { ...handle, index: i };
       }
     }
     return null;
   };
 
   const isInPlacement = (mouseX, mouseY) => {
+    const canvasPlacement = toCanvasCoords(placement);
     return (
-      mouseX >= placement.x &&
-      mouseX <= placement.x + placement.width &&
-      mouseY >= placement.y &&
-      mouseY <= placement.y + placement.height
+      mouseX >= canvasPlacement.x &&
+      mouseX <= canvasPlacement.x + canvasPlacement.width &&
+      mouseY >= canvasPlacement.y &&
+      mouseY <= canvasPlacement.y + canvasPlacement.height
     );
   };
 
@@ -237,19 +275,25 @@ export default function QrPlacementCanvas({
     if (isDragging || isResizing) return;
 
     const pos = getMousePos(e);
+    const canvasPlacement = toCanvasCoords(placement);
     
     const resizeHandle = isInResizeHandle(pos.x, pos.y);
     if (resizeHandle) {
       setIsResizing(true);
-      setDragStart({ x: pos.x, y: pos.y, handle: resizeHandle });
+      setDragStart({ 
+        x: pos.x, 
+        y: pos.y, 
+        handle: resizeHandle,
+        originalPlacement: { ...placement }
+      });
       return;
     }
 
     if (isInPlacement(pos.x, pos.y)) {
       setIsDragging(true);
       setDragStart({
-        x: pos.x - placement.x,
-        y: pos.y - placement.y
+        x: pos.x - canvasPlacement.x,
+        y: pos.y - canvasPlacement.y
       });
     }
   };
@@ -257,52 +301,66 @@ export default function QrPlacementCanvas({
   const handleMouseMove = (e) => {
     const pos = getMousePos(e);
     const canvas = canvasRef.current;
+    const img = imageRef.current;
 
-    if (!canvas) return;
+    if (!canvas || !img) return;
 
     if (isDragging) {
-      const newX = Math.max(0, Math.min(pos.x - dragStart.x, canvas.width - placement.width));
-      const newY = Math.max(0, Math.min(pos.y - dragStart.y, canvas.height - placement.height));
+      // Calculate new position in canvas space
+      const canvasX = Math.max(0, Math.min(pos.x - dragStart.x, canvas.width - placement.width * scale));
+      const canvasY = Math.max(0, Math.min(pos.y - dragStart.y, canvas.height - placement.height * scale));
+      
+      // Convert back to original image space
+      const originalCoords = toOriginalCoords({
+        x: canvasX,
+        y: canvasY,
+        width: placement.width * scale,
+        height: placement.height * scale
+      });
       
       setPlacement(prev => ({
         ...prev,
-        x: newX,
-        y: newY
+        x: originalCoords.x,
+        y: originalCoords.y
       }));
     } else if (isResizing) {
       const handle = dragStart.handle;
-      let newPlacement = { ...placement };
+      const canvasPlacement = toCanvasCoords(dragStart.originalPlacement);
+      
+      let newCanvasPlacement = { ...canvasPlacement };
 
-      if (handle.x === placement.x && handle.y === placement.y) {
+      // Handle different corners
+      if (handle.index === 0) {
         // Top-left
-        newPlacement.x = Math.min(pos.x, placement.x + placement.width - 50);
-        newPlacement.y = Math.min(pos.y, placement.y + placement.height - 50);
-        newPlacement.width = placement.width + (placement.x - newPlacement.x);
-        newPlacement.height = placement.height + (placement.y - newPlacement.y);
-      } else if (handle.x === placement.x + placement.width && handle.y === placement.y) {
+        newCanvasPlacement.x = Math.min(pos.x, canvasPlacement.x + canvasPlacement.width - 50);
+        newCanvasPlacement.y = Math.min(pos.y, canvasPlacement.y + canvasPlacement.height - 50);
+        newCanvasPlacement.width = canvasPlacement.width + (canvasPlacement.x - newCanvasPlacement.x);
+        newCanvasPlacement.height = canvasPlacement.height + (canvasPlacement.y - newCanvasPlacement.y);
+      } else if (handle.index === 1) {
         // Top-right
-        newPlacement.y = Math.min(pos.y, placement.y + placement.height - 50);
-        newPlacement.width = Math.max(50, pos.x - placement.x);
-        newPlacement.height = placement.height + (placement.y - newPlacement.y);
-      } else if (handle.x === placement.x && handle.y === placement.y + placement.height) {
+        newCanvasPlacement.y = Math.min(pos.y, canvasPlacement.y + canvasPlacement.height - 50);
+        newCanvasPlacement.width = Math.max(50, pos.x - canvasPlacement.x);
+        newCanvasPlacement.height = canvasPlacement.height + (canvasPlacement.y - newCanvasPlacement.y);
+      } else if (handle.index === 2) {
         // Bottom-left
-        newPlacement.x = Math.min(pos.x, placement.x + placement.width - 50);
-        newPlacement.width = placement.width + (placement.x - newPlacement.x);
-        newPlacement.height = Math.max(50, pos.y - placement.y);
+        newCanvasPlacement.x = Math.min(pos.x, canvasPlacement.x + canvasPlacement.width - 50);
+        newCanvasPlacement.width = canvasPlacement.width + (canvasPlacement.x - newCanvasPlacement.x);
+        newCanvasPlacement.height = Math.max(50, pos.y - canvasPlacement.y);
       } else {
         // Bottom-right
-        newPlacement.width = Math.max(50, pos.x - placement.x);
-        newPlacement.height = Math.max(50, pos.y - placement.y);
+        newCanvasPlacement.width = Math.max(50, pos.x - canvasPlacement.x);
+        newCanvasPlacement.height = Math.max(50, pos.y - canvasPlacement.y);
       }
 
       // Ensure placement stays within bounds
-      newPlacement.x = Math.max(0, newPlacement.x);
-      newPlacement.y = Math.max(0, newPlacement.y);
-      newPlacement.width = Math.min(newPlacement.width, canvas.width - newPlacement.x);
-      newPlacement.height = Math.min(newPlacement.height, canvas.height - newPlacement.y);
+      newCanvasPlacement.x = Math.max(0, newCanvasPlacement.x);
+      newCanvasPlacement.y = Math.max(0, newCanvasPlacement.y);
+      newCanvasPlacement.width = Math.min(newCanvasPlacement.width, canvas.width - newCanvasPlacement.x);
+      newCanvasPlacement.height = Math.min(newCanvasPlacement.height, canvas.height - newCanvasPlacement.y);
 
-      setPlacement(newPlacement);
-      setDragStart({ ...dragStart, x: pos.x, y: pos.y });
+      // Convert back to original coordinates
+      const originalPlacement = toOriginalCoords(newCanvasPlacement);
+      setPlacement(originalPlacement);
     } else {
       // Update cursor
       const resizeHandle = isInResizeHandle(pos.x, pos.y);
@@ -322,19 +380,18 @@ export default function QrPlacementCanvas({
   };
 
   const resetPlacement = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!imageDimensions) return;
 
     const defaultSize = 200;
     const newPlacement = {
-      x: Math.max(0, (canvas.width - defaultSize) / 2),
-      y: Math.max(0, (canvas.height - defaultSize) / 2),
+      x: Math.max(0, (imageDimensions.width - defaultSize) / 2),
+      y: Math.max(0, (imageDimensions.height - defaultSize) / 2),
       width: defaultSize,
       height: defaultSize
     };
     
     setPlacement(newPlacement);
-    lastNotifiedRef.current = null; // Force notification on next interaction stop
+    lastNotifiedRef.current = null;
   };
 
   if (error) {
@@ -387,20 +444,24 @@ export default function QrPlacementCanvas({
         <div className="grid grid-cols-4 gap-2 text-sm">
           <div className="p-2 border rounded">
             <span className="text-muted-foreground text-xs">X:</span>{' '}
-            <span className="font-mono text-sm">{Math.round(placement.x)}</span>
+            <span className="font-mono text-sm">{Math.round(placement.x)}px</span>
           </div>
           <div className="p-2 border rounded">
             <span className="text-muted-foreground text-xs">Y:</span>{' '}
-            <span className="font-mono text-sm">{Math.round(placement.y)}</span>
+            <span className="font-mono text-sm">{Math.round(placement.y)}px</span>
           </div>
           <div className="p-2 border rounded">
             <span className="text-muted-foreground text-xs">Width:</span>{' '}
-            <span className="font-mono text-sm">{Math.round(placement.width)}</span>
+            <span className="font-mono text-sm">{Math.round(placement.width)}px</span>
           </div>
           <div className="p-2 border rounded">
             <span className="text-muted-foreground text-xs">Height:</span>{' '}
-            <span className="font-mono text-sm">{Math.round(placement.height)}</span>
+            <span className="font-mono text-sm">{Math.round(placement.height)}px</span>
           </div>
+        </div>
+
+        <div className="text-xs text-muted-foreground text-center p-2 bg-muted/50 rounded">
+          💡 Coordinates shown are in original image pixels (not scaled)
         </div>
       </div>
     </Card>

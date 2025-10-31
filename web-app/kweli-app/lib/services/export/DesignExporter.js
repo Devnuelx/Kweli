@@ -1,6 +1,6 @@
 import archiver from 'archiver';
 import { PDFDocument } from 'pdf-lib';
-import sharp from 'sharp';
+import Jimp from 'jimp';
 import { supabase } from '@/lib/supabase/supabase';
 import { Readable } from 'stream';
 
@@ -69,9 +69,8 @@ export class DesignExporter {
         }
 
         // Convert to PNG if needed and optimize
-        const pngBuffer = await sharp(design.buffer)
-          .png()
-          .toBuffer();
+        const pngBuffer = await (await Jimp.read(design.buffer))
+          .getBufferAsync(Jimp.MIME_PNG);
 
         // Embed image in PDF
         const image = await pdfDoc.embedPng(pngBuffer);
@@ -301,12 +300,10 @@ export class DesignExporter {
           const y = pageHeight - spacing - (row + 1) * (cellHeight + spacing);
 
           // Resize image to fit cell
-          const resizedBuffer = await sharp(design.buffer)
-            .resize(Math.floor(cellWidth), Math.floor(cellHeight), {
-              fit: 'inside'
-            })
-            .png()
-            .toBuffer();
+          const resizedImage = await Jimp.read(design.buffer);
+          resizedImage.scaleToFit(Math.floor(cellWidth), Math.floor(cellHeight));
+
+          const resizedBuffer = await resizedImage.getBufferAsync(Jimp.MIME_PNG);
 
           const image = await pdfDoc.embedPng(resizedBuffer);
           const dims = image.scale(1);
