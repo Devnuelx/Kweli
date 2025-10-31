@@ -50,13 +50,13 @@ Kweli is a blockchain-powered authentication platform that makes product verific
 
 ---
 
-## ✨ What Makes Kweli Different
+## What Makes Kweli Different
 
-### 🔍 **Dual Verification System**
+### **Dual Verification System**
 - **QR Code Scanning:** Point, click, verify. Takes 3 seconds. Earn 10 tokens.
 - **AI Image Analysis:** No QR code? No problem. Upload a photo and our AI checks if it's real. Earn 5-15 tokens based on confidence.
 
-### 🪙 **Rewards That Matter**
+### **Rewards That Matter**
 We're not giving out useless points. VFY tokens can be redeemed for:
 - Mobile airtime
 - Data bundles
@@ -64,7 +64,7 @@ We're not giving out useless points. VFY tokens can be redeemed for:
 
 Because fighting counterfeits should benefit everyone, not just businesses.
 
-### 🧭 **Business Dashboard Built for Reality**
+### **Business Dashboard Built for Reality**
 Most anti-counterfeit solutions require you to redesign your entire packaging line. Not ours.
 - Register products one-by-one or bulk import via CSV
 - Generate QR codes in seconds
@@ -72,7 +72,7 @@ Most anti-counterfeit solutions require you to redesign your entire packaging li
 - View supply chain analytics
 - Set up in **Minutes**, not 6 months
 
-### 📱 **Mobile-First Design**
+### **Mobile-First Design**
 Our app works where your customers are—on their phones, even with spotty internet:
 - Offline-first architecture
 - Built-in wallet for VFY tokens
@@ -80,7 +80,7 @@ Our app works where your customers are—on their phones, even with spotty inter
 - Achievement badges (because gamification works)
 - Camera-first UX designed for markets, not boardrooms
 
-### 🔐 **Security That Actually Works**
+### **Security That Actually Works**
 - SHA-384 hashing for QR generation (using company-specific secrets)
 - Hedera Consensus Service for immutable logging
 - Duplicate scan prevention
@@ -88,11 +88,11 @@ Our app works where your customers are—on their phones, even with spotty inter
 
 ---
 
-## ⚙️ Why We Chose Hedera
+## Why We Chose Hedera
 
 We will process alot of transaction and it will require speed and low cost so as not to overwhelm bussinesses with too much cost and make sure to have something to reward users from .Hedera is the only blockchain that makes sense for supply chain integration, cost and speed is everything.
 
-### 🧾 **Hedera Consensus Service (HCS)**
+### **Hedera Consensus Service (HCS)**
 We use HCS to log every single action:
 - Product registrations
 - QR verifications
@@ -101,14 +101,14 @@ We use HCS to log every single action:
 
 Everything gets a consensus timestamp and becomes permanent. No one can fake this. Not businesses, not us, not anyone.
 
-### 💰 **Hedera Token Service (HTS)**
+### **Hedera Token Service (HTS)**
 Our VFY token runs on HTS:
 - **100 million fixed supply** (no inflation shenanigans)
 - 2 decimals for easy math
 - Treasury and operator keys for security
 - Automatic rewards distribution based on verification points
 
-### 📊 **The Numbers That Matter**
+### **The Numbers That Matter**
 - **$0.0001 per transaction** vs $5-50 on Ethereum (99.8% cost savings)
 - **10,000 TPS** vs 12-15 on Ethereum (667x faster)
 - **0.000003 kWh per transaction** vs 800 kWh on Bitcoin (266 million times more efficient)
@@ -117,7 +117,7 @@ We're not trying to save the planet here, but we're also not trying to destroy i
 
 ---
 
-## 💰 Why Businesses Should Care (ROI Breakdown)
+## Why Businesses Should Care (ROI Breakdown)
 
 Let me show you the actual money we're saving companies:
 
@@ -133,7 +133,7 @@ Plus you get compliance records for free, avoid regulatory fines, and build cons
 
 ---
 
-## 🧱 Tech Stack
+## Tech Stack
 
 We built this to be maintainable and scalable:
 
@@ -179,7 +179,7 @@ kweli/
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### What You'll Need
 - Node.js 18+ (use 20.x for best results)
@@ -232,7 +232,7 @@ Scan the QR code with Expo Go on your phone. Make sure to grant camera permissio
 
 ---
 
-## 🔌 API Endpoints
+## API Endpoints
 
 Our backend is straightforward. Here's what's available:
 
@@ -250,7 +250,7 @@ Our backend is straightforward. Here's what's available:
 
 ---
 
-## 🎁 Token Rewards
+## Token Rewards
 
 We keep the rewards simple:
 
@@ -262,7 +262,7 @@ We keep the rewards simple:
 
 ---
 
-## 🧪 Running Tests & Building
+## Running Tests & Building
 
 ```bash
 # Lint your code
@@ -318,9 +318,9 @@ MIT License — Use it, modify it, build on it. Just make the world a little saf
 
 ---
 
-## 💬 Final Thoughts
+## Final Thoughts
 
-Every time someone scans a QR code on Kweli, they're not just verifying a product—they're casting a vote for a more transparent, trustworthy marketplace. They're protecting their families. They're saving lives.
+Every time someone scans a QR code on Kweli, they're not just verifying a product, they're casting a vote for a more transparent, trustworthy marketplace. They're protecting their families. They're saving lives.
 
 This isn't some abstract blockchain experiment. This is about making sure a mother in Lagos doesn't lose her child to fake antibiotics. It's about ensuring a farmer's investment in fertilizer actually helps his crops grow. It's about trust, transparency, and accountability in markets where all three have been destroyed by counterfeits.
 
