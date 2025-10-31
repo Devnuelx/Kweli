@@ -11,9 +11,10 @@ We're building a blockchain-powered authentication platform that makes it super 
 
 - **Pitch Deck:** [View our pitch deck here](https://drive.google.com/drive/u/0/folders/1f5Z8o_3AICdk-6hQe4S0FTRMZhHM5M8N)
 - **Hedera Certification:** [View certification](./submission-material/Hashgraph%20Certificate.pdf)
-- **Live Demo:** [kweli-web.vercel.app](https://kweli-web.vercel.app)
+-**Live Demo:**[View Demo](https://youtu.be/BFePv2-5DUw)
+- **Webapp Demo:** [kweli-web.vercel.app](https://kweli-web.vercel.app)
 - **Mobile App:** [Try with Expo](https://expo.dev/preview/update?message=Added+index+entry+point&updateRuntimeVersion=1.0.0&createdAt=2025-10-28T05%3A39%3A29.412Z&slug=exp&projectId=aea820d4-6839-4ab6-a9ef-be6944be8cf0&group=f17efc63-436e-42dd-b5f1-a78ad467a46e)
-
+**X:**:[text](https://x.com/Kweliofficial?t=Os_Q_U-PrZJi-OTnYcWXRw&s=09)
 ---
 
 ## Inspiration
@@ -331,3 +332,4 @@ Thanks for taking the time to check out Kweli. Let's build something that matter
 ---
 
 🔗 **Live Demo:** [kweli-web.vercel.app](https://kweli-web.vercel.app) 
+**COntact:** Kweliteam@gmail.com
