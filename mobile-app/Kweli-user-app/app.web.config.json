@@ -1,0 +1,13 @@
+{
+  "expo-router": {
+    "web": {
+      "useRouter": true,
+      "output": "static",
+      "publicPath": "/",
+      "routerConfig": {
+        "caseSensitive": false,
+        "basename": "/"
+      }
+    }
+  }
+}
