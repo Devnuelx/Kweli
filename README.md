@@ -74,6 +74,7 @@ Because fighting counterfeits should benefit everyone, not just businesses.
 Most anti-counterfeit solutions require you to redesign your entire packaging line. Not ours.
 - Register products one-by-one or bulk import via CSV
 - Generate QR codes in seconds
+- Upload company product design, select a spot to embed the code and we embed the qrcodes directly without needing to change their setup or design. All from the dashboard.
 - Track verifications in real-time
 - View supply chain analytics
 - Set up in **Minutes**, not 6 months
