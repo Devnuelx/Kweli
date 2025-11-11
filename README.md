@@ -1,6 +1,6 @@
 # Kweli
 
-> **Built for Hedera Hack Africa 2025**  
+> **Built for Hedera Africa Hackathon 2025**  
 > Know the kweli, it will set you free.
 
 We're building a blockchain-powered authentication platform that makes it super simple for businesses to protect their products and for consumers to verify what they're buying—all while earning rewards for doing the right thing. Businesses help save lives, get thier trust and value back users earn $VFY
@@ -11,10 +11,15 @@ We're building a blockchain-powered authentication platform that makes it super 
 
 - **Pitch Deck:** [View our pitch deck here](https://drive.google.com/drive/u/0/folders/1f5Z8o_3AICdk-6hQe4S0FTRMZhHM5M8N)
 - **Hedera Certification:** [View certification](./submission-material/Hashgraph%20Certificate.pdf)
--**Live Demo:**[View Demo](https://youtu.be/BFePv2-5DUw)
-- **Webapp Demo:** [kweli-web.vercel.app](https://kweli-web.vercel.app)
+-**Live Demo:**[View Demo](https://www.youtube.com/watch?v=Yu9a-h2IDS8)
+- **Business Dashboard:** [kweli-web.vercel.app](https://kweli-web.vercel.app/dashboard)
+- **Business Landing page:** [kweli-web.vercel.app](https://kweli-web.vercel.app/business)
+- **Registered data onchain:** [Verified data on hashscan](https://hashscan.io/testnet/topic/0.0.6936808/messages)
+- **Consumer Landing page:** [kweli-web.vercel.app](https://kweli-web.vercel.app/)
 - **Mobile App:** [Try with Expo](https://expo.dev/preview/update?message=Added+index+entry+point&updateRuntimeVersion=1.0.0&createdAt=2025-10-28T05%3A39%3A29.412Z&slug=exp&projectId=aea820d4-6839-4ab6-a9ef-be6944be8cf0&group=f17efc63-436e-42dd-b5f1-a78ad467a46e)
-**X:**:[text](https://x.com/Kweliofficial?t=Os_Q_U-PrZJi-OTnYcWXRw&s=09)
+
+- **Webapp Demo:** [kweli-web.vercel.app](https://kweli-web.vercel.app) Dosen't work as well as mobile
+**X:**:[X](https://x.com/Kweliofficial?t=Os_Q_U-PrZJi-OTnYcWXRw&s=09)
 ---
 
 ## Inspiration
@@ -39,11 +44,11 @@ I've seen this firsthand. Walk into any market in Lagos, and you'll find:
 
 ## Our Solution
 
-Kweli is a blockchain-powered authentication platform that makes product verification as easy as scanning a QR code. No complex integrations, no expensive overhauls, just straightforward protection built on Hedera's lightning-fast infrastructure.
+Kweli is a Hedera-powered DePIN (Decentralized Physical Infrastructure Network) for product authenticity that makes product verification as easy as scanning a QR code. No complex integrations, no expensive overhauls, just straightforward protection built on Hedera's lightning-fast infrastructure.
 
 ### How It Works
 
-1. **Businesses** Creates company accounts register their products on our dashboard in minutes and upload thier product design as template
+1. **Businesses** Creates company accounts and goes through KYB when they pass, they register their products on our dashboard in minutes and upload thier product design as template
 2. We generate a **unique QR code** for each product, secured on the Hedera blockchain, ready to download as individual qrcode or directly embed it to products design, this removes a huge pain point and extra cost.
 3. **Consumers** scan the code with our mobile app (or upload a photo for AI verification)
 4. If it's legit, they get confirmation instantly—plus **VFY tokens** they can redeem for airtime or data
@@ -86,6 +91,7 @@ Our app works where your customers are—on their phones, even with spotty inter
 - Hedera Consensus Service for immutable logging
 - Duplicate scan prevention
 - Tamper-proof audit trails
+- KYB for businesses
 
 ---
 
@@ -288,25 +294,6 @@ We're just getting started. Here's what we're building next:
 3. **Supply chain tracking** (full journey from manufacturer to consumer)
 4. **Token redemption partnerships** (telcos, retailers, pharmacies)
 
----
-
-##  Contributing
-
-Want to help fight counterfeits? Here's how:
-
-1. Fork this repo
-2. Create a feature branch (`git checkout -b feature/amazing-idea`)
-3. Write clean, tested code
-4. Commit with clear messages
-5. Submit a pull request
-
-We review PRs within 48 hours.
-
----
-
-## License
-
-MIT License — Use it, modify it, build on it. Just make the world a little safer.
 
 ---
 
