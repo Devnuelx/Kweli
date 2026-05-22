@@ -156,32 +156,38 @@ We built this to be maintainable and scalable:
 
 ## 📂 Project Structure
 
+This is a **pnpm workspaces monorepo** with Turborepo for build orchestration.
+
 ```
 kweli/
-├── web-app/                 # Main business dashboard
-│   ├── app/
-│   │   ├── (app)/          # Protected routes
-│   │   │   └── dashboard/  # Business management
-│   │   └── (public)/       # Public pages
-│   │       ├── login/
-│   │       ├── signup/
-│   │       └── verify/     # Consumer verification
-│   ├── api/                # Backend endpoints
-│   ├── components/         # Reusable UI
-│   ├── lib/
-│   │   ├── hedera/        # Hedera SDK integration
-│   │   └── services/      # AI, QR, CSV logic
-│   └── database/          # Supabase migrations
+├── package.json              # Root workspace config
+├── pnpm-workspace.yaml       # pnpm workspaces definition
+├── turbo.json                # Turborepo build config
 │
-├── mobile-app/             # Consumer mobile app
-│   ├── app/
-│   │   ├── (tabs)/        # Home, wallet, history
-│   │   ├── auth/          # Login/signup
-│   │   └── result/        # Verification results
-│   ├── services/          # API & storage
-│   └── components/        # Mobile UI components
+├── apps/
+│   ├── web/                  # @kweli/web - Business dashboard (Next.js)
+│   │   ├── app/
+│   │   │   ├── (app)/       # Protected routes (dashboard)
+│   │   │   └── (public)/    # Public pages (login, signup, verify)
+│   │   ├── lib/
+│   │   │   ├── hedera/      # Hedera SDK integration
+│   │   │   └── services/    # AI, QR, CSV logic
+│   │   └── database/        # Supabase migrations
+│   │
+│   └── mobile/               # @kweli/mobile - Consumer app (Expo)
+│       ├── app/
+│       │   ├── (tabs)/      # Home, wallet, history
+│       │   ├── auth/        # Login/signup
+│       │   └── result/      # Verification results
+│       ├── services/        # API & storage
+│       └── components/      # Mobile UI components
 │
-└── docs/                  # Documentation
+├── packages/
+│   ├── shared-types/         # @kweli/shared-types - Shared TypeScript types
+│   └── config/               # @kweli/config - Shared constants
+│
+└── docs/
+    └── submission-material/  # Hackathon submission files
 ```
 
 ---
@@ -189,50 +195,56 @@ kweli/
 ## Getting Started
 
 ### What You'll Need
-- Node.js 18+ (use 20.x for best results)
+- **Node.js 18+** (use 20.x for best results)
+- **pnpm** (`npm install -g pnpm`)
 - A Supabase account (free tier works fine)
 - Hedera testnet account ([portal.hedera.com](https://portal.hedera.com))
 - OpenAI API key
 - Expo Go app (for mobile testing)
 
-### Setting Up the Web App
+### Quick Start (Monorepo)
 
 ```bash
-# Clone and enter the project
+# Clone the project
 git clone https://github.com/Tuunechi/kweli.git
-cd kweli/web-app/kweli-app
+cd kweli
 
-# Install dependencies
-npm install
+# Install all dependencies
+pnpm install
+```
 
-# Set up your environment variables
-cp .env.example .env.local
-# Edit .env.local with your keys:
-# - NEXT_PUBLIC_SUPABASE_URL
-# - NEXT_PUBLIC_SUPABASE_ANON_KEY
-# - HEDERA_ACCOUNT_ID
-# - HEDERA_PRIVATE_KEY
-# - HEDERA_TOKEN_ID
-# - OPENAI_API_KEY
-# - NEXTAUTH_SECRET
-# - NEXTAUTH_URL
+### Running the Web App
 
-# Run the development server
-npm run dev
+```bash
+# From root directory
+pnpm --filter @kweli/web dev
+
+# Or use the convenience script
+pnpm dev:web
+```
+
+Set up your environment variables in `apps/web/.env.local`:
+```
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+HEDERA_ACCOUNT_ID=
+HEDERA_PRIVATE_KEY=
+HEDERA_TOKEN_ID=
+OPENAI_API_KEY=
+NEXTAUTH_SECRET=
+NEXTAUTH_URL=
 ```
 
 Open [http://localhost:3000](http://localhost:3000) and you're live.
 
-### Setting Up the Mobile App
+### Running the Mobile App
 
 ```bash
-cd kweli/mobile-app/kweli-user-app
+# From root directory
+pnpm --filter @kweli/mobile start
 
-# Install dependencies
-npm install
-
-# Start the Expo dev server
-npm start
+# Or use the convenience script
+pnpm dev:mobile
 ```
 
 Scan the QR code with Expo Go on your phone. Make sure to grant camera permissions when prompted.

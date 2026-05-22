@@ -1,0 +1,22 @@
+{
+  "name": "kweli",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "description": "Hedera-powered product authentication platform",
+  "scripts": {
+    "dev:web": "pnpm --filter @kweli/web dev",
+    "dev:mobile": "pnpm --filter @kweli/mobile start",
+    "build:web": "pnpm --filter @kweli/web build",
+    "lint": "pnpm -r lint",
+    "clean": "pnpm -r exec rm -rf node_modules && rm -rf node_modules"
+  },
+  "keywords": [
+    "hedera",
+    "blockchain",
+    "authentication",
+    "anti-counterfeit"
+  ],
+  "author": "Kweli Team",
+  "license": "MIT"
+}
