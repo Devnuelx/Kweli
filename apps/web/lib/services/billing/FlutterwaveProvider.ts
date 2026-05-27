@@ -1,6 +1,10 @@
 import { PaymentProvider } from './PaymentProvider';
+import type { PaymentLinkData, TransactionDetails } from './PaymentProvider';
 
 export class FlutterwaveProvider extends PaymentProvider {
+  private secretKey: string | undefined;
+  private baseUrl: string;
+
   constructor() {
     super();
     this.secretKey = process.env.FLUTTERWAVE_SECRET_KEY;
@@ -9,10 +13,10 @@ export class FlutterwaveProvider extends PaymentProvider {
 
   /**
    * Initialize a payment session/link via Flutterwave
-   * @param {Object} data 
+   * @param {PaymentLinkData} data 
    * @returns {Promise<string>} The payment URL
    */
-  async createPaymentLink(data) {
+  async createPaymentLink(data: PaymentLinkData): Promise<string> {
     if (!this.secretKey) {
       console.warn("FLUTTERWAVE_SECRET_KEY is missing. Using dummy payment URL.");
       // Return a dummy link if no API key is present for development
@@ -54,9 +58,9 @@ export class FlutterwaveProvider extends PaymentProvider {
   /**
    * Verify a transaction via Flutterwave
    * @param {string} transactionId 
-   * @returns {Promise<Object>}
+   * @returns {Promise<TransactionDetails>}
    */
-  async verifyTransaction(transactionId) {
+  async verifyTransaction(transactionId: string): Promise<TransactionDetails> {
     if (!this.secretKey) {
       console.warn("FLUTTERWAVE_SECRET_KEY is missing. Returning success for dummy verify.");
       return { status: 'successful', amount: 100, currency: 'USD' }; // Dummy success

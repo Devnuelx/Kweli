@@ -2,14 +2,21 @@
  * Termii Service for SMS Notifications
  * Uses the Termii API for sending SMS messages in Africa.
  */
+
+interface SmsResult {
+  success: boolean;
+  data?: Record<string, unknown>;
+  error?: string;
+}
+
 export class TermiiService {
   /**
    * Send an SMS message
    * @param {string} to - The recipient's phone number
    * @param {string} sms - The message body
-   * @returns {Promise<Object>} The API response
+   * @returns {Promise<SmsResult>} The API response
    */
-  static async sendSms(to, sms) {
+  static async sendSms(to: string, sms: string): Promise<SmsResult> {
     try {
       const apiKey = process.env.TERMII_API_KEY;
       if (!apiKey) {
@@ -48,9 +55,10 @@ export class TermiiService {
       }
 
       return { success: true, data };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("TermiiService Error:", error);
-      return { success: false, error: error.message };
+      const message = error instanceof Error ? error.message : "Unknown error";
+      return { success: false, error: message };
     }
   }
 }

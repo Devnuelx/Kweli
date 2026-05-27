@@ -1,8 +1,8 @@
-// lib/hedera/associateToken.js
+// lib/hedera/associateToken.ts
 import { TokenAssociateTransaction, AccountId, PrivateKey } from "@hashgraph/sdk";
-import { getHederaClient } from "./client.js";
+import { getHederaClient } from "./client";
 
-export async function associateToken(userAccountId, userPrivateKey, tokenId) {
+export async function associateToken(userAccountId: string, userPrivateKey: string, tokenId: string): Promise<void> {
   const client = getHederaClient();
   client.setOperator(AccountId.fromString(userAccountId), PrivateKey.fromString(userPrivateKey));
 

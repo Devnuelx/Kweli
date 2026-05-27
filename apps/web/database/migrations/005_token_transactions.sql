@@ -11,13 +11,16 @@ CREATE TABLE IF NOT EXISTS token_transactions (
 );
 
 -- Add indexes for better query performance
-CREATE INDEX idx_token_transactions_user_id ON token_transactions(user_id);
-CREATE INDEX idx_token_transactions_created_at ON token_transactions(created_at DESC);
+DROP INDEX IF EXISTS idx_token_transactions_user_id;
+CREATE INDEX IF NOT EXISTS idx_token_transactions_user_id ON token_transactions(user_id);
+DROP INDEX IF EXISTS idx_token_transactions_created_at;
+CREATE INDEX IF NOT EXISTS idx_token_transactions_created_at ON token_transactions(created_at DESC);
 
 -- Add Hedera account fields to users table
 ALTER TABLE users ADD COLUMN IF NOT EXISTS hedera_account_id VARCHAR(50);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS hedera_private_key TEXT;
 
 -- Add index for Hedera account lookups
+DROP INDEX IF EXISTS idx_users_hedera_account_id;
 CREATE INDEX IF NOT EXISTS idx_users_hedera_account_id ON users(hedera_account_id);
 

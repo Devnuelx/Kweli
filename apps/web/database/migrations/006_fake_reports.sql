@@ -14,6 +14,9 @@ CREATE TABLE IF NOT EXISTS fake_reports (
 );
 
 -- Indexes
-CREATE INDEX idx_fake_reports_user_id ON fake_reports(user_id);
-CREATE INDEX idx_fake_reports_status ON fake_reports(status);
-CREATE INDEX idx_fake_reports_created_at ON fake_reports(created_at DESC);
+DROP INDEX IF EXISTS idx_fake_reports_user_id;
+CREATE INDEX IF NOT EXISTS idx_fake_reports_user_id ON fake_reports(user_id);
+DROP INDEX IF EXISTS idx_fake_reports_status;
+CREATE INDEX IF NOT EXISTS idx_fake_reports_status ON fake_reports(status);
+DROP INDEX IF EXISTS idx_fake_reports_created_at;
+CREATE INDEX IF NOT EXISTS idx_fake_reports_created_at ON fake_reports(created_at DESC);

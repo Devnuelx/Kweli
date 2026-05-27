@@ -2,14 +2,60 @@
  * CSV Validator Service - Additional validation utilities
  * Following SOLID principles: Single Responsibility
  */
+
+interface FileValidation {
+  name: string;
+  type: string;
+  size: number;
+}
+
+interface ValidationResult {
+  valid: boolean;
+  errors: string[];
+}
+
+interface BatchConsistencyResult extends ValidationResult {
+  batchCount: number;
+}
+
+interface QrPlacement {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface ImageDimensions {
+  width: number;
+  height: number;
+}
+
+interface ProductData {
+  productId?: string;
+  name?: string;
+  batchNumber?: string;
+  description?: string;
+  category?: string;
+  [key: string]: unknown;
+}
+
+interface CsvRowData {
+  batchNumber: string;
+  name: string;
+  manufacturingDate: string;
+  expiryDate: string;
+  qrPlacement?: QrPlacement | null;
+  [key: string]: unknown;
+}
+
 export class CsvValidator {
   /**
    * Validate CSV file before parsing
-   * @param {File} file - CSV file
-   * @returns {Object} Validation result
+   * @param {FileValidation} file - CSV file
+   * @returns {ValidationResult} Validation result
    */
-  static validateFile(file) {
-    const errors = [];
+  static validateFile(file: FileValidation): ValidationResult {
+    const errors: string[] = [];
     const maxSize = 10 * 1024 * 1024; // 10MB
 
     // Check file type
@@ -41,12 +87,12 @@ export class CsvValidator {
 
   /**
    * Validate batch consistency
-   * @param {Array} rows - CSV rows
-   * @returns {Object} Validation result
+   * @param {CsvRowData[]} rows - CSV rows
+   * @returns {BatchConsistencyResult} Validation result
    */
-  static validateBatchConsistency(rows) {
-    const errors = [];
-    const batches = {};
+  static validateBatchConsistency(rows: CsvRowData[]): BatchConsistencyResult {
+    const errors: string[] = [];
+    const batches: Record<string, { name: string; manufacturingDate: string; expiryDate: string; firstRow: number }> = {};
 
     rows.forEach((row, index) => {
       const key = row.batchNumber;
@@ -85,12 +131,12 @@ export class CsvValidator {
 
   /**
    * Validate QR placement coordinates
-   * @param {Object} placement - {x, y, width, height}
-   * @param {Object} imageDimensions - {width, height}
-   * @returns {Object} Validation result
+   * @param {QrPlacement | null} placement - {x, y, width, height}
+   * @param {ImageDimensions} imageDimensions - {width, height}
+   * @returns {ValidationResult} Validation result
    */
-  static validateQrPlacement(placement, imageDimensions) {
-    const errors = [];
+  static validateQrPlacement(placement: QrPlacement | null, imageDimensions: ImageDimensions): ValidationResult {
+    const errors: string[] = [];
 
     if (!placement) {
       return { valid: false, errors: ['No placement provided'] };
@@ -130,10 +176,10 @@ export class CsvValidator {
 
   /**
    * Sanitize product data
-   * @param {Object} data - Product data
-   * @returns {Object} Sanitized data
+   * @param {ProductData} data - Product data
+   * @returns {ProductData} Sanitized data
    */
-  static sanitize(data) {
+  static sanitize(data: ProductData): ProductData {
     return {
       ...data,
       productId: data.productId?.trim().replace(/[^\w-]/g, '_'),
@@ -146,4 +192,3 @@ export class CsvValidator {
 }
 
 export default CsvValidator;
-

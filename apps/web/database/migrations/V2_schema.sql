@@ -124,10 +124,17 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS batch_size INT DEFAULT 1;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS units_generated BOOLEAN DEFAULT false;
 
 -- Indexes for performance
+DROP INDEX IF EXISTS idx_product_units_serial;
 CREATE INDEX IF NOT EXISTS idx_product_units_serial ON product_units(serial_code);
+DROP INDEX IF EXISTS idx_product_units_product;
 CREATE INDEX IF NOT EXISTS idx_product_units_product ON product_units(product_id);
+DROP INDEX IF EXISTS idx_scan_events_unit;
 CREATE INDEX IF NOT EXISTS idx_scan_events_unit ON scan_events(unit_id);
+DROP INDEX IF EXISTS idx_scan_events_ip;
 CREATE INDEX IF NOT EXISTS idx_scan_events_ip ON scan_events(ip_address);
+DROP INDEX IF EXISTS idx_campaign_entries_campaign;
 CREATE INDEX IF NOT EXISTS idx_campaign_entries_campaign ON campaign_entries(campaign_id);
+DROP INDEX IF EXISTS idx_campaign_entries_phone;
 CREATE INDEX IF NOT EXISTS idx_campaign_entries_phone ON campaign_entries(consumer_phone);
+DROP INDEX IF EXISTS idx_subscriptions_company;
 CREATE INDEX IF NOT EXISTS idx_subscriptions_company ON subscriptions(company_id);

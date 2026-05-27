@@ -17,7 +17,8 @@ import {
   Loader2,
   BookOpen,
   FileText,
-  Gift
+  Gift,
+  Camera
 } from "lucide-react";
 
 export default function DashboardNavbar({ children }) {
@@ -36,18 +37,24 @@ export default function DashboardNavbar({ children }) {
     sku: '',
     category: '',
     description: '',
+    manufacturer: '',
+    batchNumber: '',
+    manufacturingDate: '',
+    expiryDate: '',
     batchSize: 1
   });
   const [submitting, setSubmitting] = useState(false);
 
   const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: BarChart3 },
+    { name: "Scan Product", href: "/scan", icon: Camera },
     { name: "Products", href: "/dashboard/products", icon: Package },
     { name: "Campaigns", href: "/dashboard/campaigns", icon: Gift },
     { name: "Templates", href: "/dashboard/templates", icon: FileText },
     { name: "API Docs", href: "/dashboard/docs", icon: BookOpen },
     { name: "Settings", href: "/dashboard/settings", icon: Settings },
   ];
+
 
 
 
@@ -90,6 +97,10 @@ export default function DashboardNavbar({ children }) {
           sku: '',
           category: '',
           description: '',
+          manufacturer: '',
+          batchNumber: '',
+          manufacturingDate: '',
+          expiryDate: '',
           batchSize: 1
         });
         setShowProductModal(false);
@@ -301,6 +312,44 @@ export default function DashboardNavbar({ children }) {
                       placeholder="Food & Beverage"
                       value={productForm.category}
                       onChange={(e) => setProductForm({...productForm, category: e.target.value})}
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-300">Manufacturer</label>
+                    <input
+                      type="text"
+                      placeholder="Company name"
+                      value={productForm.manufacturer}
+                      onChange={(e) => setProductForm({...productForm, manufacturer: e.target.value})}
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-300">Batch Number</label>
+                    <input
+                      type="text"
+                      placeholder="BATCH-2026-001"
+                      value={productForm.batchNumber}
+                      onChange={(e) => setProductForm({...productForm, batchNumber: e.target.value})}
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-300">Manufacturing Date</label>
+                    <input
+                      type="date"
+                      value={productForm.manufacturingDate}
+                      onChange={(e) => setProductForm({...productForm, manufacturingDate: e.target.value})}
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-300">Expiry Date</label>
+                    <input
+                      type="date"
+                      value={productForm.expiryDate}
+                      onChange={(e) => setProductForm({...productForm, expiryDate: e.target.value})}
                       className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-500"
                     />
                   </div>

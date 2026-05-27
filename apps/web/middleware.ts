@@ -1,8 +1,9 @@
-// middleware.js
+// middleware.ts
 import { withAuth } from "next-auth/middleware";
+import type { NextRequestWithAuth } from "next-auth/middleware";
 
 export default withAuth(
-  function middleware(req) {
+  function middleware(_req: NextRequestWithAuth) {
     // Optional: Add additional middleware logic here if needed
   },
   {

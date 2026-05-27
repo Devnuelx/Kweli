@@ -1,6 +1,14 @@
 import QRCode from 'qrcode';
 
-export async function generateQRCode(hashOrUrl, productId) {
+interface QRCodeBufferOptions {
+  errorCorrection?: string;
+  width?: number;
+  margin?: number;
+  darkColor?: string;
+  lightColor?: string;
+}
+
+export async function generateQRCode(hashOrUrl: string, productId?: string): Promise<string> {
   const verificationUrl = productId ? `${process.env.NEXT_PUBLIC_APP_URL}/verify?hash=${hashOrUrl}&pid=${productId}` : hashOrUrl;
   
   const qrCodeDataURL = await QRCode.toDataURL(verificationUrl, {
@@ -18,11 +26,11 @@ export async function generateQRCode(hashOrUrl, productId) {
 }
 
 // Generate QR code as buffer for embedding
-export async function generateQRCodeBuffer(hashOrUrl, productId, options = {}) {
+export async function generateQRCodeBuffer(hashOrUrl: string, productId?: string, options: QRCodeBufferOptions = {}): Promise<Buffer> {
   const verificationUrl = productId ? `${process.env.NEXT_PUBLIC_APP_URL}/verify?hash=${hashOrUrl}&pid=${productId}` : hashOrUrl;
   
   const qrBuffer = await QRCode.toBuffer(verificationUrl, {
-    errorCorrectionLevel: options.errorCorrection || 'H',
+    errorCorrectionLevel: (options.errorCorrection as QRCode.QRCodeErrorCorrectionLevel) || 'H',
     type: 'png',
     width: options.width || 600,
     margin: options.margin || 2,

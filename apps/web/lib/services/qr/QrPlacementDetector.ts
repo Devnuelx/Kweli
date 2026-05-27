@@ -2,6 +2,87 @@ import Jimp from 'jimp';
 import Tesseract from 'tesseract.js';
 import { supabase } from '@/lib/supabase/supabase';
 
+interface Placement {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface ImageDimensions {
+  width: number;
+  height: number;
+}
+
+interface DetectionOptions {
+  placeholderColor?: string;
+  textMarker?: string;
+}
+
+interface DetectedPlacement extends Placement {
+  method: string;
+  confidence: number;
+}
+
+interface DetectionResult {
+  success: boolean;
+  placements: DetectedPlacement[];
+  methods: string[];
+  imageDimensions?: ImageDimensions;
+  error?: string;
+}
+
+interface ColorDetectionResult {
+  found: boolean;
+  placement?: Placement;
+  confidence?: number;
+  error?: string;
+  details?: {
+    regionCount: number;
+    matchedPixels: number;
+  };
+}
+
+interface TextDetectionResult {
+  found: boolean;
+  placement?: Placement;
+  confidence?: number;
+  error?: string;
+  details?: {
+    recognizedText: string;
+    ocrConfidence: number;
+  };
+}
+
+interface TemplateResult {
+  found: boolean;
+  placement?: Record<string, unknown>;
+  method?: string;
+  templateName?: string;
+  error?: string;
+}
+
+interface CsvCoordinatesResult {
+  found: boolean;
+  placement?: Record<string, unknown>;
+  method?: string;
+}
+
+interface RgbColor {
+  r: number;
+  g: number;
+  b: number;
+}
+
+interface Region {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  area: number;
+  matchedPixels: number;
+}
+
 /**
  * QR Placement Detector Service
  * Detects QR code placement using multiple methods
@@ -10,26 +91,21 @@ import { supabase } from '@/lib/supabase/supabase';
 export class QrPlacementDetector {
   /**
    * Detect QR placement using all available methods
-   * @param {Buffer} imageBuffer - Image buffer
-   * @param {Object} options - Detection options
-   * @returns {Promise<Object>} Detected placements
    */
-  static async detectAll(imageBuffer, options = {}) {
-    const results = {
+  static async detectAll(imageBuffer: Buffer, options: DetectionOptions = {}): Promise<DetectionResult> {
+    const results: DetectionResult = {
       success: false,
       placements: [],
       methods: []
     };
 
     try {
-      // Get image metadata
       const baseImage = await Jimp.read(imageBuffer);
-      const imageDimensions = {
+      const imageDimensions: ImageDimensions = {
         width: baseImage.bitmap.width,
         height: baseImage.bitmap.height
       };
 
-      // Try color placeholder detection
       if (options.placeholderColor) {
         const colorPlacement = await this.detectColorPlaceholder(
           imageBuffer,
@@ -37,7 +113,7 @@ export class QrPlacementDetector {
           imageDimensions
         );
         
-        if (colorPlacement.found) {
+        if (colorPlacement.found && colorPlacement.placement && colorPlacement.confidence !== undefined) {
           results.placements.push({
             method: 'color',
             ...colorPlacement.placement,
@@ -47,7 +123,6 @@ export class QrPlacementDetector {
         }
       }
 
-      // Try text marker detection
       if (options.textMarker) {
         const textPlacement = await this.detectTextMarker(
           imageBuffer,
@@ -55,7 +130,7 @@ export class QrPlacementDetector {
           imageDimensions
         );
         
-        if (textPlacement.found) {
+        if (textPlacement.found && textPlacement.placement && textPlacement.confidence !== undefined) {
           results.placements.push({
             method: 'text',
             ...textPlacement.placement,
@@ -69,38 +144,33 @@ export class QrPlacementDetector {
       results.imageDimensions = imageDimensions;
 
       return results;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Detection error:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
       return {
         success: false,
-        error: error.message,
-        placements: []
+        error: message,
+        placements: [],
+        methods: []
       };
     }
   }
 
   /**
    * Detect colored placeholder box
-   * @param {Buffer} imageBuffer - Image buffer
-   * @param {string} targetColor - Hex color (e.g., '#00FF00')
-   * @param {Object} imageDimensions - Image dimensions
-   * @returns {Promise<Object>} Detection result
    */
-  static async detectColorPlaceholder(imageBuffer, targetColor, imageDimensions) {
+  static async detectColorPlaceholder(imageBuffer: Buffer, targetColor: string, imageDimensions: ImageDimensions): Promise<ColorDetectionResult> {
     try {
-      // Convert hex to RGB
       const rgb = this.hexToRgb(targetColor);
       if (!rgb) {
         return { found: false, error: 'Invalid color format' };
       }
 
-      // Get raw pixel data
       const image = await Jimp.read(imageBuffer);
       const { data, width, height } = image.bitmap;
       const channels = 4;
       const tolerance = 30;
       
-      // Find colored regions
       const regions = this.findColoredRegions(
         data,
         width,
@@ -114,20 +184,17 @@ export class QrPlacementDetector {
         return { found: false };
       }
 
-      // Get the largest region (most likely the placeholder)
       const largestRegion = regions.reduce((max, region) => 
         region.area > max.area ? region : max
       );
 
-      // Calculate bounding box
-      const placement = {
+      const placement: Placement = {
         x: largestRegion.minX,
         y: largestRegion.minY,
         width: largestRegion.maxX - largestRegion.minX,
         height: largestRegion.maxY - largestRegion.minY
       };
 
-      // Confidence based on color match quality
       const confidence = Math.min(
         (largestRegion.matchedPixels / largestRegion.area) * 100,
         100
@@ -142,32 +209,26 @@ export class QrPlacementDetector {
           matchedPixels: largestRegion.matchedPixels
         }
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Color detection error:', error);
-      return { found: false, error: error.message };
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return { found: false, error: message };
     }
   }
 
   /**
    * Detect text marker (e.g., "QR_HERE")
-   * @param {Buffer} imageBuffer - Image buffer
-   * @param {string} textMarker - Text to find
-   * @param {Object} imageDimensions - Image dimensions
-   * @returns {Promise<Object>} Detection result
    */
-  static async detectTextMarker(imageBuffer, textMarker, imageDimensions) {
+  static async detectTextMarker(imageBuffer: Buffer, textMarker: string, imageDimensions: ImageDimensions): Promise<TextDetectionResult> {
     try {
-      // Convert image to PNG for Tesseract
       const pngBuffer = await (await Jimp.read(imageBuffer))
         .getBufferAsync(Jimp.MIME_PNG);
 
-      // Perform OCR
       const { data } = await Tesseract.recognize(pngBuffer, 'eng', {
         logger: () => {} // Suppress logs
       });
 
-      // Find text marker in OCR results
-      const words = data.words || [];
+      const words = (data as any).words || [];
       
       for (let i = 0; i < words.length; i++) {
         const word = words[i];
@@ -175,14 +236,12 @@ export class QrPlacementDetector {
         const marker = textMarker.toUpperCase().replace(/[^\w]/g, '');
 
         if (text === marker || text.includes(marker)) {
-          // Found the marker, use its bounding box
           const bbox = word.bbox;
           
-          // Add padding around text to create QR placement area
           const padding = 20;
           const size = Math.max(bbox.x1 - bbox.x0, bbox.y1 - bbox.y0) + padding * 2;
           
-          const placement = {
+          const placement: Placement = {
             x: Math.max(0, bbox.x0 - padding),
             y: Math.max(0, bbox.y0 - padding),
             width: Math.min(size, imageDimensions.width - bbox.x0 + padding),
@@ -202,18 +261,17 @@ export class QrPlacementDetector {
       }
 
       return { found: false };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Text detection error:', error);
-      return { found: false, error: error.message };
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return { found: false, error: message };
     }
   }
 
   /**
    * Get saved template coordinates
-   * @param {string} templateId - Template ID
-   * @returns {Promise<Object>} Template placement
    */
-  static async getTemplateCoordinates(templateId) {
+  static async getTemplateCoordinates(templateId: string): Promise<TemplateResult> {
     try {
       const { data, error } = await supabase
         .from('design_templates')
@@ -231,17 +289,16 @@ export class QrPlacementDetector {
         method: 'template',
         templateName: data.name
       };
-    } catch (error) {
-      return { found: false, error: error.message };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return { found: false, error: message };
     }
   }
 
   /**
    * Extract QR coordinates from CSV row
-   * @param {Object} row - CSV row with qr_x, qr_y, qr_width, qr_height
-   * @returns {Object} Placement from CSV
    */
-  static getCsvCoordinates(row) {
+  static getCsvCoordinates(row: { qrPlacement?: Record<string, unknown> }): CsvCoordinatesResult {
     if (!row.qrPlacement) {
       return { found: false };
     }
@@ -257,9 +314,9 @@ export class QrPlacementDetector {
    * Find colored regions in image
    * @private
    */
-  static findColoredRegions(data, width, height, channels, targetRgb, tolerance) {
+  static findColoredRegions(data: Buffer, width: number, height: number, channels: number, targetRgb: RgbColor, tolerance: number): Region[] {
     const visited = new Array(width * height).fill(false);
-    const regions = [];
+    const regions: Region[] = [];
 
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
@@ -271,22 +328,12 @@ export class QrPlacementDetector {
         const g = data[idx + 1];
         const b = data[idx + 2];
 
-        // Check if pixel matches target color
         if (this.colorMatches(r, g, b, targetRgb, tolerance)) {
-          // Flood fill to find region
           const region = this.floodFill(
-            data,
-            width,
-            height,
-            channels,
-            x,
-            y,
-            visited,
-            targetRgb,
-            tolerance
+            data, width, height, channels, x, y, visited, targetRgb, tolerance
           );
 
-          if (region.area > 100) { // Minimum area threshold
+          if (region.area > 100) {
             regions.push(region);
           }
         }
@@ -300,14 +347,14 @@ export class QrPlacementDetector {
    * Flood fill algorithm to find connected colored regions
    * @private
    */
-  static floodFill(data, width, height, channels, startX, startY, visited, targetRgb, tolerance) {
-    const stack = [[startX, startY]];
+  static floodFill(data: Buffer, width: number, height: number, channels: number, startX: number, startY: number, visited: boolean[], targetRgb: RgbColor, tolerance: number): Region {
+    const stack: [number, number][] = [[startX, startY]];
     let minX = startX, maxX = startX, minY = startY, maxY = startY;
     let area = 0;
     let matchedPixels = 0;
 
     while (stack.length > 0) {
-      const [x, y] = stack.pop();
+      const [x, y] = stack.pop()!;
       
       if (x < 0 || x >= width || y < 0 || y >= height) continue;
       
@@ -330,7 +377,6 @@ export class QrPlacementDetector {
       minY = Math.min(minY, y);
       maxY = Math.max(maxY, y);
 
-      // Add neighbors
       stack.push([x + 1, y]);
       stack.push([x - 1, y]);
       stack.push([x, y + 1]);
@@ -344,7 +390,7 @@ export class QrPlacementDetector {
    * Check if color matches target with tolerance
    * @private
    */
-  static colorMatches(r, g, b, target, tolerance) {
+  static colorMatches(r: number, g: number, b: number, target: RgbColor, tolerance: number): boolean {
     return (
       Math.abs(r - target.r) <= tolerance &&
       Math.abs(g - target.g) <= tolerance &&
@@ -356,7 +402,7 @@ export class QrPlacementDetector {
    * Convert hex color to RGB
    * @private
    */
-  static hexToRgb(hex) {
+  static hexToRgb(hex: string): RgbColor | null {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result ? {
       r: parseInt(result[1], 16),
@@ -367,11 +413,8 @@ export class QrPlacementDetector {
 
   /**
    * Create default centered placement
-   * @param {Object} imageDimensions - Image dimensions
-   * @param {number} qrSize - QR code size (default 200)
-   * @returns {Object} Centered placement
    */
-  static createDefaultPlacement(imageDimensions, qrSize = 200) {
+  static createDefaultPlacement(imageDimensions: ImageDimensions, qrSize: number = 200): Placement & { method: string } {
     return {
       x: Math.floor((imageDimensions.width - qrSize) / 2),
       y: Math.floor((imageDimensions.height - qrSize) / 2),
@@ -383,4 +426,3 @@ export class QrPlacementDetector {
 }
 
 export default QrPlacementDetector;
-

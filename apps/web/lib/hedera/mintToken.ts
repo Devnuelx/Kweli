@@ -1,17 +1,17 @@
-// lib/hedera/mintToken.js
+// lib/hedera/mintToken.ts
 import {
   TokenMintTransaction,
   AccountId,
   PrivateKey,
 } from "@hashgraph/sdk";
-import { getHederaClient } from "./client.js";
+import { getHederaClient } from "./client";
 
 // Load from env
-const OPERATOR_ID = AccountId.fromString(process.env.HEDERA_ACCOUNT_ID);
-const OPERATOR_KEY = PrivateKey.fromString(process.env.HEDERA_PRIVATE_KEY);
-const TOKEN_ID = process.env.HEDERA_TOKEN_ID; // The token you created
+const OPERATOR_ID = AccountId.fromString(process.env.HEDERA_ACCOUNT_ID!);
+const OPERATOR_KEY = PrivateKey.fromString(process.env.HEDERA_PRIVATE_KEY!);
+const TOKEN_ID = process.env.HEDERA_TOKEN_ID!; // The token you created
 
-export async function mintTokens(amount) {
+export async function mintTokens(amount: number) {
   const client = getHederaClient();
 
   const tx = await new TokenMintTransaction()

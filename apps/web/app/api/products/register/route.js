@@ -36,6 +36,10 @@ export async function POST(request) {
       sku, 
       category,
       description,
+      manufacturer,
+      batchNumber,
+      manufacturingDate,
+      expiryDate,
       batchSize = 1
     } = body;
 
@@ -58,18 +62,29 @@ export async function POST(request) {
       console.error("Hedera submission failed, proceeding:", hErr);
     }
 
+    // Generate a unique product_id string (required by DB, NOT NULL)
+    const productId = sku 
+      ? `${sku}-${Date.now()}` 
+      : `PROD-${crypto.randomUUID().split('-')[0]}-${Date.now()}`;
+
     // Create the main Product row
     const { data: product, error: productError } = await supabase
       .from("products")
       .insert({
+        product_id: productId,
         company_id: company.id,
         name,
         sku: sku || null,
         category: category || null,
         description: description || null,
+        manufacturer: manufacturer || null,
+        batch_number: batchNumber || null,
+        manufacturing_date: manufacturingDate || null,
+        expiry_date: expiryDate || null,
         batch_size: batchSize,
         units_generated: true,
         hedera_topic_id: hederaResult.topicId,
+        hedera_transaction_id: hederaResult.transactionId || null,
         status: 'active'
       })
       .select()

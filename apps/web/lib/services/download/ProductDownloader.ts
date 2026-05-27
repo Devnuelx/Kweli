@@ -3,6 +3,50 @@ import { QrEmbedder } from '@/lib/services/qr/QrEmbedder';
 import { DesignExporter } from '@/lib/services/export/DesignExporter';
 import { generateQRCodeBuffer } from '@/lib/hedera/qrGenerator';
 
+interface DownloadOptions {
+  onProgress?: (current: number, total: number) => void;
+  includeMetadata?: boolean;
+  pdfLayout?: 'fit' | 'actual';
+}
+
+interface DownloadResult {
+  success: boolean;
+  format: string;
+  outputType: string;
+  count: number;
+  templateName?: string;
+  downloadUrl: string;
+  stats: ReturnType<typeof DesignExporter.getExportStats>;
+}
+
+interface DownloadBothResult {
+  success: boolean;
+  qrOnly: DownloadResult;
+  embedded: DownloadResult;
+}
+
+interface ProductUnit {
+  id: string;
+  serial_code: string;
+  qr_url: string;
+  products: {
+    product_id: string;
+    batch_number: string;
+    name: string;
+    company_id: string;
+  };
+}
+
+interface DesignTemplate {
+  id: string;
+  name: string;
+  template_url: string;
+  qr_placement: { x: number; y: number; width: number; height: number };
+  is_active: boolean;
+  company_id: string;
+  [key: string]: unknown;
+}
+
 /**
  * Product Downloader Service
  * Handles flexible downloads of QR codes (standalone or embedded in designs)
@@ -11,13 +55,9 @@ import { generateQRCodeBuffer } from '@/lib/hedera/qrGenerator';
 export class ProductDownloader {
   /**
    * Download QR codes only as ZIP
-   * @param {Array} productIds - Array of product IDs
-   * @param {string} companyId - Company ID
-   * @returns {Promise<Object>} Download result with URL
    */
-  static async downloadQrCodesOnly(productIds, companyId) {
+  static async downloadQrCodesOnly(productIds: string[], companyId: string): Promise<DownloadResult> {
     try {
-      // Fetch units from database
       const { data: units, error } = await supabase
         .from('product_units')
         .select(`
@@ -40,13 +80,12 @@ export class ProductDownloader {
         throw new Error('No products found');
       }
 
-      // Generate high-res QR codes as buffers
       const qrDesigns = await Promise.all(
-        units.map(async (unit) => {
+        (units as unknown as ProductUnit[]).map(async (unit) => {
           try {
             const qrBuffer = await generateQRCodeBuffer(
               unit.qr_url,
-              null,
+              undefined,
               { width: 600 }
             );
 
@@ -57,24 +96,23 @@ export class ProductDownloader {
               serialNumber: unit.serial_code,
               qrHash: 'N/A'
             };
-          } catch (error) {
+          } catch (error: unknown) {
             console.error(`Failed to generate QR for ${unit.serial_code}:`, error);
+            const message = error instanceof Error ? error.message : 'Unknown error';
             return {
               success: false,
-              error: error.message,
+              error: message,
               productId: unit.products.name
             };
           }
         })
       );
 
-      // Export as ZIP
       const zipBuffer = await DesignExporter.exportAsZip(qrDesigns, {
         includeManifest: true,
         filenameFormat: '{serialNumber}_QR.png'
       });
 
-      // Upload to storage
       const batchId = `download_${Date.now()}`;
       const uploadResult = await DesignExporter.uploadToStorage(
         zipBuffer,
@@ -88,33 +126,27 @@ export class ProductDownloader {
         format: 'qr-only',
         outputType: 'zip',
         count: units.length,
-        downloadUrl: uploadResult.zip.url,
+        downloadUrl: uploadResult.zip!.url,
         stats: DesignExporter.getExportStats(qrDesigns)
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('QR codes download error:', error);
-      throw new Error(`Failed to download QR codes: ${error.message}`);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to download QR codes: ${message}`);
     }
   }
 
   /**
    * Download products with QR codes embedded on banner template
-   * @param {Array} productIds - Array of product IDs
-   * @param {string} companyId - Company ID
-   * @param {string} outputType - 'zip' or 'pdf'
-   * @param {Object} options - Additional options
-   * @returns {Promise<Object>} Download result with URL
    */
-  static async downloadEmbedded(productIds, companyId, outputType = 'zip', options = {}) {
+  static async downloadEmbedded(productIds: string[], companyId: string, outputType: 'zip' | 'pdf' = 'zip', options: DownloadOptions = {}): Promise<DownloadResult> {
     try {
-      // Get active template
       const template = await this.getActiveTemplate(companyId);
       
       if (!template) {
         throw new Error('No active template found. Please set up a banner template first.');
       }
 
-      // Fetch units
       const { data: units, error } = await supabase
         .from('product_units')
         .select(`
@@ -137,22 +169,19 @@ export class ProductDownloader {
         throw new Error('No products found');
       }
 
-      // Get template design file
       const templateBuffer = await this.fetchTemplateFile(template.template_url);
 
-      // Generate high-res QR codes as buffers
       const productsWithQr = await Promise.all(
-        units.map(async (unit) => ({
+        (units as unknown as ProductUnit[]).map(async (unit) => ({
           ...unit,
           qrCodeBuffer: await generateQRCodeBuffer(
             unit.qr_url,
-            null,
+            undefined,
             { width: 600 }
           )
         }))
       );
 
-      // Embed QR codes on template
       const designs = await QrEmbedder.generateBatchDesigns(
         templateBuffer,
         productsWithQr.map(p => ({
@@ -168,12 +197,11 @@ export class ProductDownloader {
         }
       );
 
-      // Add metadata overlay if requested
       if (options.includeMetadata) {
         for (let i = 0; i < designs.length; i++) {
-          if (designs[i].success) {
+          if (designs[i].success && designs[i].buffer) {
             designs[i].buffer = await QrEmbedder.addMetadataOverlay(
-              designs[i].buffer,
+              designs[i].buffer!,
               {
                 productId: designs[i].productId,
                 serialNumber: designs[i].serialNumber,
@@ -184,9 +212,8 @@ export class ProductDownloader {
         }
       }
 
-      // Export based on format
-      let exportBuffer;
-      let exportFormat;
+      let exportBuffer: Buffer;
+      let exportFormat: 'zip' | 'pdf';
 
       if (outputType === 'pdf') {
         exportBuffer = await DesignExporter.exportAsPdf(designs, {
@@ -202,7 +229,6 @@ export class ProductDownloader {
         exportFormat = 'zip';
       }
 
-      // Upload to storage
       const batchId = `download_${Date.now()}`;
       const uploadResult = await DesignExporter.uploadToStorage(
         exportBuffer,
@@ -217,21 +243,20 @@ export class ProductDownloader {
         outputType: exportFormat,
         count: units.length,
         templateName: template.name,
-        downloadUrl: uploadResult[exportFormat].url,
+        downloadUrl: uploadResult[exportFormat]!.url,
         stats: DesignExporter.getExportStats(designs)
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Embedded download error:', error);
-      throw new Error(`Failed to download embedded designs: ${error.message}`);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to download embedded designs: ${message}`);
     }
   }
 
   /**
    * Get active template for company
-   * @param {string} companyId - Company ID
-   * @returns {Promise<Object>} Active template
    */
-  static async getActiveTemplate(companyId) {
+  static async getActiveTemplate(companyId: string): Promise<DesignTemplate | null> {
     try {
       const { data: template, error } = await supabase
         .from('design_templates')
@@ -244,7 +269,7 @@ export class ProductDownloader {
         throw error;
       }
 
-      return template || null;
+      return (template as DesignTemplate) || null;
     } catch (error) {
       console.error('Error fetching active template:', error);
       return null;
@@ -253,16 +278,13 @@ export class ProductDownloader {
 
   /**
    * Fetch template file from Supabase Storage
-   * @param {string} templateUrl - Template URL
-   * @returns {Promise<Buffer>} Template file buffer
    */
-  static async fetchTemplateFile(templateUrl) {
+  static async fetchTemplateFile(templateUrl: string): Promise<Buffer> {
     try {
       if (!templateUrl) {
         throw new Error('Template URL is required');
       }
 
-      // If it's a Supabase storage URL, fetch it
       if (templateUrl.includes('supabase')) {
         const response = await fetch(templateUrl);
         if (!response.ok) {
@@ -272,7 +294,6 @@ export class ProductDownloader {
         return Buffer.from(arrayBuffer);
       }
 
-      // Otherwise assume it's already a buffer or local file
       throw new Error('Invalid template URL format');
     } catch (error) {
       console.error('Error fetching template file:', error);
@@ -282,11 +303,8 @@ export class ProductDownloader {
 
   /**
    * Download products with both formats (QR only + Embedded)
-   * @param {Array} productIds - Array of product IDs
-   * @param {string} companyId - Company ID
-   * @returns {Promise<Object>} Download results for both formats
    */
-  static async downloadBoth(productIds, companyId) {
+  static async downloadBoth(productIds: string[], companyId: string): Promise<DownloadBothResult> {
     try {
       const [qrOnlyResult, embeddedResult] = await Promise.all([
         this.downloadQrCodesOnly(productIds, companyId),
@@ -306,14 +324,11 @@ export class ProductDownloader {
 
   /**
    * Check if company has active template
-   * @param {string} companyId - Company ID
-   * @returns {Promise<boolean>} Has active template
    */
-  static async hasActiveTemplate(companyId) {
+  static async hasActiveTemplate(companyId: string): Promise<boolean> {
     const template = await this.getActiveTemplate(companyId);
     return template !== null;
   }
 }
 
 export default ProductDownloader;
-

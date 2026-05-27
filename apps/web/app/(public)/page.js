@@ -165,11 +165,11 @@ export default function LandingPage() {
               ))} */}
             </div>
 
-            <h1 className="text-5xl md:text-5xl lg:text-[5rem] font-bold tracking-tight text-white leading-[1.05] mb-6">
+            <h1 className="text-4xl md:text-5xl lg:text-[5rem] font-bold tracking-tight text-white leading-[1.05] mb-6">
               Verify Products<br />
               Get Rewarded Instantly
             </h1>
-            <p className="text-base md:text-base text-white/90 mb-10 max-w-[480px] leading-relaxed">
+            <p className="text-base md:text-base text-white/70 mb-10 max-w-[480px] leading-relaxed">
               Scan products with the Kweli app before you buy. See its entire origin story, verify authenticity, and get rewarded just for participating.
             </p>
             <div className="flex flex-row gap-3 md:gap-4 w-full">
@@ -232,47 +232,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* AS SEEN ON Section */}
-      <section className="py-12 bg-[#FDFDFD]">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center gap-10">
-            <span className="text-gray-400 font-semibold tracking-[0.2em] text-sm uppercase shrink-0">
-              AS SEEN ON
-            </span>
-            <div className="flex flex-wrap justify-center md:justify-between items-center w-full gap-8 md:gap-4 opacity-70 grayscale">
-              <div className="text-2xl font-bold font-serif text-black">Forbes</div>
-              <div className="text-2xl font-bold font-sans text-black flex items-center gap-1"><span className="text-[#00FC82] text-3xl leading-none">TC</span> TechCrunch</div>
-              <div className="text-2xl font-bold font-serif text-black">TheGuardian</div>
-              <div className="text-2xl font-bold font-sans text-black opacity-80">Techpoint<span className="text-sm font-normal">.africa</span></div>
-              <div className="text-2xl font-bold font-sans tracking-tighter text-black">TECHCITY</div>
-            </div>
-          </div>
-
-          <div className="pt-24 text-center flex flex-col items-center">
-            <div className="w-16 h-20 bg-[#831F2E] rounded-b-full flex items-center justify-center mb-8 relative">
-              <Shield className="text-white w-8 h-8" />
-              <div className="absolute -top-3 w-4 h-4 rounded-full bg-white flex items-center justify-center relative">
-                <div className="absolute whitespace-nowrap top-5 tracking-tighter text-[10px] uppercase font-bold text-[#831F2E]">MSECB</div>
-                <div className="w-2 h-2 rounded-full bg-[#831F2E]" />
-              </div>
-            </div>
-
-            <h2 className="text-4xl md:text-[3.5rem] font-bold text-gray-900 mt-6 mb-2 tracking-tight">
-              Authentication without borders
-            </h2>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-2">
-              <h3 className="text-4xl md:text-[3.5rem] font-bold text-[#5629B6] tracking-tight flex items-center">
-                Track global <ArrowRight className="inline w-10 h-10 md:w-12 md:h-12 ml-2" />
-              </h3>
-              <div className="w-[4.5rem] h-10 bg-[#E8DDF5] rounded-full p-1 relative flex items-center cursor-pointer ml-4">
-                <div className="w-8 h-8 bg-[#5629B6] rounded-full flex items-center justify-center translate-x-8 shadow-sm">
-                  <div className="text-white text-sm">⚡</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Foreign Bank Accounts Light Blue Section */}
       <section className="pt-24 pb-12 bg-[#FDFDFD]">

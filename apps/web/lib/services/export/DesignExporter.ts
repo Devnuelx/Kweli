@@ -2,7 +2,68 @@ import archiver from 'archiver';
 import { PDFDocument } from 'pdf-lib';
 import Jimp from 'jimp';
 import { supabase } from '@/lib/supabase/supabase';
-import { Readable } from 'stream';
+
+interface DesignItem {
+  success: boolean;
+  buffer?: Buffer;
+  productId?: string;
+  serialNumber?: string;
+  qrHash?: string;
+  error?: string;
+}
+
+interface ZipExportOptions {
+  includeManifest?: boolean;
+  filenameFormat?: string;
+}
+
+interface PdfExportOptions {
+  layout?: 'fit' | 'actual';
+  includeMetadata?: boolean;
+  title?: string;
+  author?: string;
+}
+
+interface ExportBothOptions {
+  zip?: ZipExportOptions;
+  pdf?: PdfExportOptions;
+}
+
+interface NUpOptions {
+  columns?: number;
+  rows?: number;
+  spacing?: number;
+}
+
+interface UploadResult {
+  success: boolean;
+  zip?: { path: string; url: string };
+  pdf?: { path: string; url: string };
+  error?: string;
+}
+
+interface ManifestData {
+  generated: string;
+  totalDesigns: number;
+  successfulDesigns: number;
+  failedDesigns: number;
+  designs: {
+    productId?: string;
+    serialNumber?: string;
+    qrHash?: string;
+    success: boolean;
+    error?: string | null;
+    filename: string;
+  }[];
+}
+
+interface ExportStats {
+  total: number;
+  successful: number;
+  failed: number;
+  successRate: string | number;
+  failedItems: { productId?: string; error?: string }[];
+}
 
 /**
  * Design Exporter Service
@@ -12,24 +73,24 @@ import { Readable } from 'stream';
 export class DesignExporter {
   /**
    * Export designs as ZIP file
-   * @param {Array} designs - Array of {buffer, productId, serialNumber}
-   * @param {Object} options - Export options
+   * @param {DesignItem[]} designs - Array of {buffer, productId, serialNumber}
+   * @param {ZipExportOptions} options - Export options
    * @returns {Promise<Buffer>} ZIP file buffer
    */
-  static async exportAsZip(designs, options = {}) {
+  static async exportAsZip(designs: DesignItem[], options: ZipExportOptions = {}): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       const archive = archiver('zip', {
         zlib: { level: 9 } // Maximum compression
       });
 
-      const chunks = [];
+      const chunks: Buffer[] = [];
 
-      archive.on('data', (chunk) => chunks.push(chunk));
+      archive.on('data', (chunk: Buffer) => chunks.push(chunk));
       archive.on('end', () => resolve(Buffer.concat(chunks)));
-      archive.on('error', (err) => reject(err));
+      archive.on('error', (err: Error) => reject(err));
 
       // Add each design to ZIP
-      designs.forEach((design, index) => {
+      designs.forEach((design) => {
         if (!design.success || !design.buffer) {
           console.warn(`Skipping failed design: ${design.productId}`);
           return;
@@ -53,11 +114,11 @@ export class DesignExporter {
 
   /**
    * Export designs as multi-page PDF
-   * @param {Array} designs - Array of {buffer, productId, serialNumber}
-   * @param {Object} options - Export options
+   * @param {DesignItem[]} designs - Array of {buffer, productId, serialNumber}
+   * @param {PdfExportOptions} options - Export options
    * @returns {Promise<Buffer>} PDF buffer
    */
-  static async exportAsPdf(designs, options = {}) {
+  static async exportAsPdf(designs: DesignItem[], options: PdfExportOptions = {}): Promise<Buffer> {
     try {
       const pdfDoc = await PDFDocument.create();
       
@@ -77,7 +138,7 @@ export class DesignExporter {
         const imageDims = image.scale(1);
 
         // Calculate page size based on layout option
-        let pageWidth, pageHeight;
+        let pageWidth: number, pageHeight: number;
         
         if (options.layout === 'fit') {
           // Fit image to standard page sizes
@@ -120,19 +181,20 @@ export class DesignExporter {
 
       const pdfBytes = await pdfDoc.save();
       return Buffer.from(pdfBytes);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('PDF export error:', error);
-      throw new Error(`Failed to create PDF: ${error.message}`);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to create PDF: ${message}`);
     }
   }
 
   /**
    * Export both ZIP and PDF
-   * @param {Array} designs - Array of designs
-   * @param {Object} options - Export options
-   * @returns {Promise<Object>} {zip: Buffer, pdf: Buffer}
+   * @param {DesignItem[]} designs - Array of designs
+   * @param {ExportBothOptions} options - Export options
+   * @returns {Promise<{zip: Buffer, pdf: Buffer}>}
    */
-  static async exportBoth(designs, options = {}) {
+  static async exportBoth(designs: DesignItem[], options: ExportBothOptions = {}): Promise<{ zip: Buffer; pdf: Buffer }> {
     const [zipBuffer, pdfBuffer] = await Promise.all([
       this.exportAsZip(designs, options.zip || {}),
       this.exportAsPdf(designs, options.pdf || {})
@@ -143,23 +205,28 @@ export class DesignExporter {
 
   /**
    * Upload exports to Supabase Storage
-   * @param {Buffer|Object} exports - Buffer or {zip, pdf}
+   * @param {Buffer | {zip?: Buffer; pdf?: Buffer}} exports - Buffer or {zip, pdf}
    * @param {string} companyId - Company ID
    * @param {string} batchId - Batch identifier
    * @param {string} format - 'zip', 'pdf', or 'both'
-   * @returns {Promise<Object>} Upload results with URLs
+   * @returns {Promise<UploadResult>} Upload results with URLs
    */
-  static async uploadToStorage(exports, companyId, batchId, format = 'zip') {
-    const results = {};
+  static async uploadToStorage(
+    exports: Buffer | { zip?: Buffer; pdf?: Buffer },
+    companyId: string,
+    batchId: string,
+    format: 'zip' | 'pdf' | 'both' = 'zip'
+  ): Promise<UploadResult> {
+    const results: UploadResult = { success: true };
     const timestamp = Date.now();
     const basePath = `designs/${companyId}/${batchId}`;
 
     try {
       if (format === 'zip' || format === 'both') {
-        const zipBuffer = format === 'both' ? exports.zip : exports;
+        const zipBuffer = format === 'both' ? (exports as { zip: Buffer }).zip : (exports as Buffer);
         const zipPath = `${basePath}/designs-${timestamp}.zip`;
         
-        const { data: zipData, error: zipError } = await supabase.storage
+        const { error: zipError } = await supabase.storage
           .from('product-designs')
           .upload(zipPath, zipBuffer, {
             contentType: 'application/zip',
@@ -179,10 +246,10 @@ export class DesignExporter {
       }
 
       if (format === 'pdf' || format === 'both') {
-        const pdfBuffer = format === 'both' ? exports.pdf : exports;
+        const pdfBuffer = format === 'both' ? (exports as { pdf: Buffer }).pdf : (exports as Buffer);
         const pdfPath = `${basePath}/designs-${timestamp}.pdf`;
         
-        const { data: pdfData, error: pdfError } = await supabase.storage
+        const { error: pdfError } = await supabase.storage
           .from('product-designs')
           .upload(pdfPath, pdfBuffer, {
             contentType: 'application/pdf',
@@ -201,27 +268,25 @@ export class DesignExporter {
         };
       }
 
-      return {
-        success: true,
-        ...results
-      };
-    } catch (error) {
+      return results;
+    } catch (error: unknown) {
       console.error('Storage upload error:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
       return {
         success: false,
-        error: error.message
+        error: message
       };
     }
   }
 
   /**
    * Generate filename for design
-   * @param {Object} design - Design object
+   * @param {DesignItem} design - Design object
    * @param {string} format - Filename format template
    * @returns {string} Filename
    */
-  static generateFilename(design, format = '{serialNumber}.png') {
-    const replacements = {
+  static generateFilename(design: DesignItem, format: string = '{serialNumber}.png'): string {
+    const replacements: Record<string, string | number> = {
       '{productId}': design.productId || 'unknown',
       '{serialNumber}': design.serialNumber || design.productId || 'unknown',
       '{qrHash}': design.qrHash ? design.qrHash.substring(0, 8) : '',
@@ -230,7 +295,7 @@ export class DesignExporter {
 
     let filename = format;
     Object.entries(replacements).forEach(([key, value]) => {
-      filename = filename.replace(key, value);
+      filename = filename.replace(key, String(value));
     });
 
     // Ensure .png extension
@@ -246,10 +311,10 @@ export class DesignExporter {
 
   /**
    * Generate manifest file
-   * @param {Array} designs - Array of designs
-   * @returns {Object} Manifest data
+   * @param {DesignItem[]} designs - Array of designs
+   * @returns {ManifestData} Manifest data
    */
-  static generateManifest(designs) {
+  static generateManifest(designs: DesignItem[]): ManifestData {
     return {
       generated: new Date().toISOString(),
       totalDesigns: designs.length,
@@ -268,11 +333,11 @@ export class DesignExporter {
 
   /**
    * Create N-up layout PDF (multiple designs per page)
-   * @param {Array} designs - Array of designs
-   * @param {Object} options - Layout options {columns, rows, spacing}
+   * @param {DesignItem[]} designs - Array of designs
+   * @param {NUpOptions} options - Layout options {columns, rows, spacing}
    * @returns {Promise<Buffer>} PDF buffer
    */
-  static async exportAsNUpPdf(designs, options = {}) {
+  static async exportAsNUpPdf(designs: DesignItem[], options: NUpOptions = {}): Promise<Buffer> {
     const { columns = 2, rows = 2, spacing = 10 } = options;
     const designsPerPage = columns * rows;
 
@@ -323,18 +388,19 @@ export class DesignExporter {
 
       const pdfBytes = await pdfDoc.save();
       return Buffer.from(pdfBytes);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('N-up PDF export error:', error);
-      throw new Error(`Failed to create N-up PDF: ${error.message}`);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to create N-up PDF: ${message}`);
     }
   }
 
   /**
    * Calculate export statistics
-   * @param {Array} designs - Array of designs
-   * @returns {Object} Statistics
+   * @param {DesignItem[]} designs - Array of designs
+   * @returns {ExportStats} Statistics
    */
-  static getExportStats(designs) {
+  static getExportStats(designs: DesignItem[]): ExportStats {
     const successful = designs.filter(d => d.success);
     const failed = designs.filter(d => !d.success);
 
@@ -352,4 +418,3 @@ export class DesignExporter {
 }
 
 export default DesignExporter;
-

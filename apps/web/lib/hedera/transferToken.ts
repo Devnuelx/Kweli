@@ -1,11 +1,11 @@
-// lib/hedera/transferToken.js
+// lib/hedera/transferToken.ts
 import { TransferTransaction, AccountId } from "@hashgraph/sdk";
-import { getHederaClient } from "./client.js";
+import { getHederaClient } from "./client";
 
-const OPERATOR_ID = AccountId.fromString(process.env.HEDERA_ACCOUNT_ID);
-const TOKEN_ID = process.env.HEDERA_TOKEN_ID;
+const OPERATOR_ID = AccountId.fromString(process.env.HEDERA_ACCOUNT_ID!);
+const TOKEN_ID = process.env.HEDERA_TOKEN_ID!;
 
-export async function transferTokens(receiverId, amount) {
+export async function transferTokens(receiverId: string, amount: number): Promise<void> {
   const client = getHederaClient();
 
   const tx = await new TransferTransaction()

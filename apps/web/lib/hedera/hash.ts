@@ -1,6 +1,13 @@
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
-export function generateProductHash(productData, companySecret) {
+interface ProductHashData {
+  productId: string;
+  companyId: string;
+  batchNumber: string;
+  manufacturingDate: string;
+}
+
+export function generateProductHash(productData: ProductHashData, companySecret: string): string {
   const dataString = JSON.stringify({
     productId: productData.productId,
     companyId: productData.companyId,

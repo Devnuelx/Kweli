@@ -2,40 +2,34 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, CheckCircle, Upload, ArrowRight } from "lucide-react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 export default function OnboardingPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const { data: session } = useSession();
 
   const handleComplete = async () => {
     setIsLoading(true);
     try {
-      // Get current user session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      if (!session?.user) {
         router.push("/login");
         return;
       }
-      
-      const { data: companyData } = await supabase
-        .from('companies')
-        .select('id')
-        .eq('email', session.user.email)
-        .single();
-        
-      if (companyData) {
-        await supabase
-          .from('companies')
-          .update({ onboarding_complete: true })
-          .eq('id', companyData.id);
+
+      const res = await fetch("/api/onboarding/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to complete onboarding");
       }
-      
+
       setSuccess(true);
       setTimeout(() => {
         router.push("/dashboard");

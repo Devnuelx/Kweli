@@ -1,8 +1,101 @@
-// lib/services/ai/ProductVerifier.js
+// lib/services/ai/ProductVerifier.ts
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+type QualityRating = 'poor' | 'average' | 'good' | 'excellent';
+type RiskLevel = 'low' | 'medium' | 'high';
+
+interface ExtractedProductInfo {
+  success: boolean;
+  brandName?: string;
+  productName?: string;
+  category?: string;
+  packagingQuality?: QualityRating;
+  imageQuality?: QualityRating;
+  textClarity?: QualityRating;
+  batchNumber?: string;
+  manufacturingDate?: string;
+  expiryDate?: string;
+  suspiciousElements?: string[];
+  legitimacyIndicators?: string[];
+  overallImpression?: string;
+  rawResponse?: string;
+  error?: string;
+}
+
+interface SearchResult {
+  title: string;
+  link: string;
+  snippet: string;
+}
+
+interface WebSearchResults {
+  success: boolean;
+  query?: string;
+  results: SearchResult[];
+  hasOfficialWebsite: boolean;
+  totalResults: number;
+  error?: string;
+  details?: string;
+}
+
+interface ScoringBreakdown {
+  overall: number;
+  imageQuality: number;
+  packagingQuality: number;
+  textClarity: number;
+  brandLegitimacy: number;
+  webPresence: number;
+  analysis: string[];
+}
+
+interface RiskAssessment {
+  level: RiskLevel;
+  description: string;
+}
+
+interface VerificationResult {
+  success: boolean;
+  verified?: boolean;
+  confidence?: number;
+  riskLevel?: RiskLevel;
+  extractedInfo?: {
+    brandName?: string;
+    productName?: string;
+    category?: string;
+    packagingQuality?: QualityRating;
+    batchNumber?: string;
+    manufacturingDate?: string;
+    expiryDate?: string;
+    suspiciousElements: string[];
+    legitimacyIndicators: string[];
+  };
+  scoring?: {
+    overall: number;
+    breakdown: {
+      imageQuality: number;
+      packagingQuality: number;
+      brandLegitimacy: number;
+      webPresence: number;
+      textClarity: number;
+    };
+  };
+  analysis?: string[];
+  webSearchResults?: {
+    success: boolean;
+    hasOfficialWebsite: boolean;
+    totalResults: number;
+    relevantLinks: SearchResult[];
+  };
+  warnings?: string[];
+  recommendations?: string[];
+  rewardEligible?: boolean;
+  message?: string;
+  error?: string;
+  details?: string;
+}
 
 /**
  * Verifies product authenticity using AI vision and web search
@@ -11,10 +104,8 @@ export class ProductVerifier {
   
   /**
    * Main verification method
-   * @param {string} imageBase64 - Base64 encoded image string
-   * @returns {Promise<Object>} Verification result with confidence score
    */
-  async verifyProduct(imageBase64) {
+  async verifyProduct(imageBase64: string): Promise<VerificationResult> {
     try {
       // Step 1: Extract product information from image using Gemini Vision
       const extractedInfo = await this.extractProductInfo(imageBase64);
@@ -29,8 +120,8 @@ export class ProductVerifier {
       
       // Step 2: Search for official product information online
       const webSearchResults = await this.searchProductOnline(
-        extractedInfo.brandName,
-        extractedInfo.productName
+        extractedInfo.brandName || '',
+        extractedInfo.productName || ''
       );
       
       // Step 3: Calculate detailed confidence scoring
@@ -82,21 +173,20 @@ export class ProductVerifier {
         message: this.generateMessage(riskAssessment.level, scoring.overall)
       };
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Product verification error:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
       return {
         success: false,
-        error: error.message
+        error: message
       };
     }
   }
   
   /**
    * Extract product information from image using Gemini Vision
-   * @param {string} imageBase64 - Base64 encoded image
-   * @returns {Promise<Object>} Extracted product information
    */
-  async extractProductInfo(imageBase64) {
+  async extractProductInfo(imageBase64: string): Promise<ExtractedProductInfo> {
     try {
       const promptText = `Analyze this product image thoroughly and extract the following information in JSON format:
 {
@@ -161,7 +251,7 @@ If you cannot clearly identify something, indicate "Unknown" or "Not visible".`;
       }
       
       // Parse JSON response
-      let parsedInfo;
+      let parsedInfo: Record<string, unknown>;
       try {
         // Try to extract JSON from markdown code blocks if present
         const jsonMatch = content.match(/```(?:json)?\n([\s\S]*?)\n```/);
@@ -170,9 +260,9 @@ If you cannot clearly identify something, indicate "Unknown" or "Not visible".`;
         } else {
           parsedInfo = JSON.parse(content);
         }
-      } catch (e) {
+      } catch {
         // If parsing fails, try to extract key information manually
-        console.error('Failed to parse Gemini response:', e);
+        console.error('Failed to parse Gemini response');
         parsedInfo = {
           brandName: this.extractField(content, 'brandName') || 'Unknown',
           productName: this.extractField(content, 'productName') || 'Unknown',
@@ -189,14 +279,15 @@ If you cannot clearly identify something, indicate "Unknown" or "Not visible".`;
       
       return {
         success: true,
-        ...parsedInfo
+        ...(parsedInfo as Omit<ExtractedProductInfo, 'success'>)
       };
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Gemini Vision error:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
       return {
         success: false,
-        error: error.message
+        error: message
       };
     }
   }
@@ -204,7 +295,7 @@ If you cannot clearly identify something, indicate "Unknown" or "Not visible".`;
   /**
    * Helper to extract field from text response
    */
-  extractField(text, fieldName) {
+  extractField(text: string, fieldName: string): string | null {
     const regex = new RegExp(`"${fieldName}"\\s*:\\s*"([^"]*)"`, 'i');
     const match = text.match(regex);
     return match ? match[1] : null;
@@ -212,16 +303,12 @@ If you cannot clearly identify something, indicate "Unknown" or "Not visible".`;
   
   /**
    * Search for product information online
-   * @param {string} brandName - Brand name to search
-   * @param {string} productName - Product name to search
-   * @returns {Promise<Object>} Web search results
    */
-  async searchProductOnline(brandName, productName) {
+  async searchProductOnline(brandName: string, productName: string): Promise<WebSearchResults> {
     try {
       const searchQuery = `${brandName} ${productName} official product`;
       const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
       
-      // Fetch Google search results
       const response = await axios.get(googleSearchUrl, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -231,8 +318,7 @@ If you cannot clearly identify something, indicate "Unknown" or "Not visible".`;
       
       const $ = cheerio.load(response.data);
       
-      // Extract search results
-      const results = [];
+      const results: SearchResult[] = [];
       $('.g').each((i, element) => {
         if (i >= 5) return false; // Limit to top 5 results
         
@@ -241,15 +327,10 @@ If you cannot clearly identify something, indicate "Unknown" or "Not visible".`;
         const snippet = $(element).find('.VwiC3b').text() || $(element).find('.IsZvec').text();
         
         if (title && link) {
-          results.push({
-            title,
-            link,
-            snippet
-          });
+          results.push({ title, link, snippet });
         }
       });
       
-      // Check if brand website is in results
       const brandDomain = brandName.toLowerCase().replace(/\s+/g, '');
       const hasOfficialWebsite = results.some(result => 
         result.link.toLowerCase().includes(brandDomain) ||
@@ -264,12 +345,13 @@ If you cannot clearly identify something, indicate "Unknown" or "Not visible".`;
         totalResults: results.length
       };
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Web search error:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
       return {
         success: false,
         error: 'Failed to search online',
-        details: error.message,
+        details: message,
         results: [],
         hasOfficialWebsite: false,
         totalResults: 0
@@ -280,7 +362,7 @@ If you cannot clearly identify something, indicate "Unknown" or "Not visible".`;
   /**
    * Calculate detailed confidence score (0-100)
    */
-  calculateDetailedScore(extractedInfo, webSearchResults) {
+  calculateDetailedScore(extractedInfo: ExtractedProductInfo, webSearchResults: WebSearchResults): ScoringBreakdown {
     const scores = {
       imageQuality: this.scoreQuality(extractedInfo.imageQuality),
       packagingQuality: this.scoreQuality(extractedInfo.packagingQuality),
@@ -289,9 +371,8 @@ If you cannot clearly identify something, indicate "Unknown" or "Not visible".`;
       webPresence: 0
     };
 
-    const analysis = [];
+    const analysis: string[] = [];
 
-    // Score brand legitimacy
     if (extractedInfo.brandName && extractedInfo.brandName !== 'Unknown') {
       scores.brandLegitimacy = 70;
       analysis.push(`Brand identified: ${extractedInfo.brandName}`);
@@ -311,7 +392,6 @@ If you cannot clearly identify something, indicate "Unknown" or "Not visible".`;
       analysis.push('Brand name not clearly identifiable');
     }
 
-    // Score web presence
     if (webSearchResults.success) {
       scores.webPresence = 50;
       if (webSearchResults.hasOfficialWebsite) {
@@ -326,14 +406,12 @@ If you cannot clearly identify something, indicate "Unknown" or "Not visible".`;
       analysis.push('Limited online verification available');
     }
 
-    // Add packaging quality to analysis
     if (extractedInfo.packagingQuality === 'excellent' || extractedInfo.packagingQuality === 'good') {
       analysis.push('High quality packaging detected');
     } else if (extractedInfo.packagingQuality === 'poor') {
       analysis.push('Low packaging quality - potential concern');
     }
 
-    // Weighted average
     const weights = {
       imageQuality: 0.15,
       packagingQuality: 0.25,
@@ -360,20 +438,20 @@ If you cannot clearly identify something, indicate "Unknown" or "Not visible".`;
   /**
    * Convert quality rating to score
    */
-  scoreQuality(quality) {
-    const qualityMap = {
+  scoreQuality(quality: string | undefined): number {
+    const qualityMap: Record<string, number> = {
       'poor': 25,
       'average': 50,
       'good': 75,
       'excellent': 95
     };
-    return qualityMap[quality?.toLowerCase()] || 50;
+    return qualityMap[quality?.toLowerCase() || ''] || 50;
   }
 
   /**
    * Assess risk level based on scoring
    */
-  assessRisk(scoring, extractedInfo) {
+  assessRisk(scoring: ScoringBreakdown, extractedInfo: ExtractedProductInfo): RiskAssessment {
     const { overall } = scoring;
     const suspiciousCount = extractedInfo.suspiciousElements?.length || 0;
 
@@ -398,8 +476,8 @@ If you cannot clearly identify something, indicate "Unknown" or "Not visible".`;
   /**
    * Generate warnings based on findings
    */
-  generateWarnings(extractedInfo, webSearchResults, scoring) {
-    const warnings = [];
+  generateWarnings(extractedInfo: ExtractedProductInfo, webSearchResults: WebSearchResults, scoring: ScoringBreakdown): string[] {
+    const warnings: string[] = [];
 
     if (scoring.imageQuality < 50) {
       warnings.push('Image quality is poor - results may be inaccurate');
@@ -409,7 +487,7 @@ If you cannot clearly identify something, indicate "Unknown" or "Not visible".`;
       warnings.push('Packaging quality appears below standard');
     }
 
-    if (extractedInfo.suspiciousElements?.length > 0) {
+    if (extractedInfo.suspiciousElements && extractedInfo.suspiciousElements.length > 0) {
       extractedInfo.suspiciousElements.forEach(element => {
         warnings.push(`⚠️ ${element}`);
       });
@@ -433,8 +511,8 @@ If you cannot clearly identify something, indicate "Unknown" or "Not visible".`;
   /**
    * Generate recommendations based on risk level
    */
-  generateRecommendations(riskLevel, extractedInfo) {
-    const recommendations = [];
+  generateRecommendations(riskLevel: RiskLevel, extractedInfo: ExtractedProductInfo): string[] {
+    const recommendations: string[] = [];
 
     if (riskLevel === 'high') {
       recommendations.push('⚠️ Do not use this product until verified');
@@ -461,7 +539,7 @@ If you cannot clearly identify something, indicate "Unknown" or "Not visible".`;
   /**
    * Generate user-friendly message
    */
-  generateMessage(riskLevel, confidence) {
+  generateMessage(riskLevel: RiskLevel, confidence: number): string {
     if (riskLevel === 'low') {
       return `✅ Product verified with ${confidence}% confidence! Likely authentic.`;
     } else if (riskLevel === 'medium') {

@@ -2,15 +2,22 @@
  * Resend Service for Email Notifications
  * Uses the Resend REST API for sending transactional emails.
  */
+
+interface EmailResult {
+  success: boolean;
+  data?: Record<string, unknown>;
+  error?: string;
+}
+
 export class ResendService {
   /**
    * Send an email message
    * @param {string} to - The recipient's email address
    * @param {string} subject - The email subject
    * @param {string} html - The email HTML body
-   * @returns {Promise<Object>} The API response
+   * @returns {Promise<EmailResult>} The API response
    */
-  static async sendEmail(to, subject, html) {
+  static async sendEmail(to: string, subject: string, html: string): Promise<EmailResult> {
     try {
       const apiKey = process.env.RESEND_API_KEY;
       if (!apiKey) {
@@ -41,9 +48,10 @@ export class ResendService {
       }
 
       return { success: true, data };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("ResendService Error:", error);
-      return { success: false, error: error.message };
+      const message = error instanceof Error ? error.message : "Unknown error";
+      return { success: false, error: message };
     }
   }
 }

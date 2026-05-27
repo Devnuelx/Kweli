@@ -8,5 +8,7 @@ CREATE TABLE IF NOT EXISTS waitlist (
 );
 
 -- Indexes
-CREATE INDEX idx_waitlist_email ON waitlist(email);
-CREATE INDEX idx_waitlist_created_at ON waitlist(created_at DESC);
+DROP INDEX IF EXISTS idx_waitlist_email;
+CREATE INDEX IF NOT EXISTS idx_waitlist_email ON waitlist(email);
+DROP INDEX IF EXISTS idx_waitlist_created_at;
+CREATE INDEX IF NOT EXISTS idx_waitlist_created_at ON waitlist(created_at DESC);

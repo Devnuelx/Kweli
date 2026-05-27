@@ -1,10 +1,79 @@
 import Jimp from 'jimp';
 import QRCode from 'qrcode';
 
+interface Placement {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface EmbedOptions {
+  batchSize?: number;
+  onProgress?: (current: number, total: number) => void;
+}
+
+interface QrBufferOptions {
+  errorCorrection?: string;
+  width?: number;
+  margin?: number;
+  darkColor?: string;
+  lightColor?: string;
+}
+
+interface MetadataOverlayOptions {
+  padding?: number;
+  fontSize?: number;
+  backgroundColor?: string;
+  textColor?: string;
+}
+
+interface MetadataInfo {
+  productId?: string;
+  serialNumber?: string;
+  batchNumber?: string;
+}
+
+interface ProductInput {
+  productId: string;
+  serialNumber: string;
+  qrCodeImage: string | Buffer;
+  qrHash: string;
+  batchNumber?: string;
+}
+
+interface DesignResult {
+  success: boolean;
+  buffer?: Buffer;
+  productId: string;
+  serialNumber: string;
+  qrHash?: string;
+  error?: string;
+}
+
+interface OptimizeOptions {
+  quality?: number;
+  compressionLevel?: number;
+}
+
+interface DesignValidation {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+  metadata?: {
+    width: number;
+    height: number;
+    format: string;
+    space: string;
+    channels: number;
+    hasAlpha: boolean;
+  };
+}
+
 const WHITE_RGBA = Jimp.rgbaToInt(255, 255, 255, 255);
 const DEFAULT_OVERLAY_RGBA = Jimp.rgbaToInt(255, 255, 255, 204);
-const FONT_SIZES = [8, 10, 12, 14, 16, 32, 64, 128];
-const FONT_PATHS = {
+const FONT_SIZES = [8, 10, 12, 14, 16, 32, 64, 128] as const;
+const FONT_PATHS: Record<string, Record<number, string>> = {
   black: {
     8: Jimp.FONT_SANS_8_BLACK,
     10: Jimp.FONT_SANS_10_BLACK,
@@ -16,14 +85,14 @@ const FONT_PATHS = {
     128: Jimp.FONT_SANS_128_BLACK
   },
   white: {
-    8: Jimp.FONT_SANS_8_WHITE,
-    10: Jimp.FONT_SANS_10_WHITE,
-    12: Jimp.FONT_SANS_12_WHITE,
-    14: Jimp.FONT_SANS_14_WHITE,
-    16: Jimp.FONT_SANS_16_WHITE,
-    32: Jimp.FONT_SANS_32_WHITE,
-    64: Jimp.FONT_SANS_64_WHITE,
-    128: Jimp.FONT_SANS_128_WHITE
+    8: (Jimp as any).FONT_SANS_8_WHITE,
+    10: (Jimp as any).FONT_SANS_10_WHITE,
+    12: (Jimp as any).FONT_SANS_12_WHITE,
+    14: (Jimp as any).FONT_SANS_14_WHITE,
+    16: (Jimp as any).FONT_SANS_16_WHITE,
+    32: (Jimp as any).FONT_SANS_32_WHITE,
+    64: (Jimp as any).FONT_SANS_64_WHITE,
+    128: (Jimp as any).FONT_SANS_128_WHITE
   }
 };
 
@@ -35,16 +104,10 @@ const FONT_PATHS = {
 export class QrEmbedder {
   /**
    * Embed single QR code on design
-   * @param {Buffer} designBuffer - Design image buffer
-   * @param {string} qrDataUrl - QR code data URL or buffer
-   * @param {Object} placement - {x, y, width, height}
-   * @param {Object} options - Additional options
-   * @returns {Promise<Buffer>} Image with embedded QR
    */
-  static async embedQrOnDesign(designBuffer, qrDataUrl, placement, options = {}) {
+  static async embedQrOnDesign(designBuffer: Buffer, qrDataUrl: string | Buffer, placement: Placement, options: EmbedOptions = {}): Promise<Buffer> {
     try {
       // CRITICAL FIX: Ensure all placement values are positive integers
-      // This handles cases where placement comes from canvas with decimal values
       const safePlacement = {
         x: Math.max(0, Math.round(Number(placement.x))),
         y: Math.max(0, Math.round(Number(placement.y))),
@@ -52,7 +115,6 @@ export class QrEmbedder {
         height: Math.max(1, Math.round(Number(placement.height)))
       };
 
-      // Validate placement values
       if (!Number.isFinite(safePlacement.x) || !Number.isFinite(safePlacement.y) ||
           !Number.isFinite(safePlacement.width) || !Number.isFinite(safePlacement.height)) {
         throw new Error(
@@ -61,8 +123,7 @@ export class QrEmbedder {
         );
       }
 
-      // Convert QR data URL to buffer if needed
-      let qrBuffer;
+      let qrBuffer: Buffer;
       if (typeof qrDataUrl === 'string' && qrDataUrl.startsWith('data:')) {
         const base64Data = qrDataUrl.split(',')[1];
         qrBuffer = Buffer.from(base64Data, 'base64');
@@ -72,7 +133,6 @@ export class QrEmbedder {
         throw new Error('Invalid QR code format. Must be data URL or Buffer.');
       }
 
-      // Get design image info first to validate placement
       const designImage = await Jimp.read(designBuffer);
       const originalMime = designImage.getMIME() || Jimp.MIME_PNG;
       const metadata = {
@@ -80,7 +140,6 @@ export class QrEmbedder {
         height: designImage.bitmap.height
       };
 
-      // Validate placement is within image bounds
       if (safePlacement.x + safePlacement.width > metadata.width ||
           safePlacement.y + safePlacement.height > metadata.height) {
         console.warn(
@@ -88,12 +147,10 @@ export class QrEmbedder {
           `Placement: ${safePlacement.x + safePlacement.width}x${safePlacement.y + safePlacement.height}, ` +
           `Image: ${metadata.width}x${metadata.height}`
         );
-        // Adjust placement to fit within bounds
         safePlacement.width = Math.min(safePlacement.width, metadata.width - safePlacement.x);
         safePlacement.height = Math.min(safePlacement.height, metadata.height - safePlacement.y);
       }
 
-      // Resize QR code to fit placement (using safe integer values)
       if (safePlacement.width <= 0 || safePlacement.height <= 0) {
         throw new Error('QR placement is outside image bounds.');
       }
@@ -106,39 +163,34 @@ export class QrEmbedder {
         Jimp.HORIZONTAL_ALIGN_CENTER | Jimp.VERTICAL_ALIGN_MIDDLE
       );
 
-      // Composite QR onto design (using safe integer values)
       designImage.composite(qrImage, safePlacement.x, safePlacement.y, {
-        mode: Jimp.BLEND_SOURCE_OVER
+        mode: Jimp.BLEND_SOURCE_OVER,
+        opacitySource: 1,
+        opacityDest: 1
       });
 
       return await designImage.getBufferAsync(originalMime);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('QR embedding error:', error);
-      throw new Error(`Failed to embed QR code: ${error.message}`);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to embed QR code: ${message}`);
     }
   }
 
   /**
    * Generate batch of designs with unique QR codes
-   * @param {Buffer} designBuffer - Base design image
-   * @param {Array} products - Array of product data with QR codes
-   * @param {Object} placement - QR placement coordinates
-   * @param {Object} options - Additional options
-   * @returns {Promise<Array>} Array of {buffer, productId, serialNumber}
    */
-  static async generateBatchDesigns(designBuffer, products, placement, options = {}) {
-    const results = [];
+  static async generateBatchDesigns(designBuffer: Buffer, products: ProductInput[], placement: Placement, options: EmbedOptions = {}): Promise<DesignResult[]> {
+    const results: DesignResult[] = [];
     const batchSize = options.batchSize || 10;
 
-    // Validate placement before processing
     console.log('Batch generation starting with placement:', placement);
 
-    // Process in batches to avoid memory issues
     for (let i = 0; i < products.length; i += batchSize) {
       const batch = products.slice(i, i + batchSize);
       
       const batchResults = await Promise.all(
-        batch.map(async (product) => {
+        batch.map(async (product): Promise<DesignResult> => {
           try {
             const embedded = await this.embedQrOnDesign(
               designBuffer,
@@ -154,11 +206,12 @@ export class QrEmbedder {
               serialNumber: product.serialNumber,
               qrHash: product.qrHash
             };
-          } catch (error) {
+          } catch (error: unknown) {
             console.error(`Failed to embed QR for ${product.productId}:`, error);
+            const message = error instanceof Error ? error.message : 'Unknown error';
             return {
               success: false,
-              error: error.message,
+              error: message,
               productId: product.productId,
               serialNumber: product.serialNumber
             };
@@ -168,7 +221,6 @@ export class QrEmbedder {
 
       results.push(...batchResults);
 
-      // Progress callback
       if (options.onProgress) {
         options.onProgress(Math.min(i + batchSize, products.length), products.length);
       }
@@ -179,16 +231,12 @@ export class QrEmbedder {
 
   /**
    * Generate high-resolution QR code as buffer
-   * @param {string} hash - QR hash
-   * @param {string} productId - Product ID
-   * @param {Object} options - QR options
-   * @returns {Promise<Buffer>} QR code buffer
    */
-  static async generateQrBuffer(hash, productId, options = {}) {
+  static async generateQrBuffer(hash: string, productId: string, options: QrBufferOptions = {}): Promise<Buffer> {
     const verificationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/verify?hash=${hash}&pid=${productId}`;
     
     const qrBuffer = await QRCode.toBuffer(verificationUrl, {
-      errorCorrectionLevel: options.errorCorrection || 'H',
+      errorCorrectionLevel: (options.errorCorrection as QRCode.QRCodeErrorCorrectionLevel) || 'H',
       type: 'png',
       width: options.width || 600,
       margin: options.margin || 2,
@@ -203,19 +251,15 @@ export class QrEmbedder {
 
   /**
    * Add text/metadata overlay to design
-   * @param {Buffer} imageBuffer - Image buffer
-   * @param {Object} metadata - {productId, batchNumber, etc}
-   * @param {Object} options - Overlay options
-   * @returns {Promise<Buffer>} Image with overlay
    */
-  static async addMetadataOverlay(imageBuffer, metadata, options = {}) {
+  static async addMetadataOverlay(imageBuffer: Buffer, metadata: MetadataInfo, options: MetadataOverlayOptions = {}): Promise<Buffer> {
     try {
       const image = await Jimp.read(imageBuffer);
       const width = image.bitmap.width;
       const height = image.bitmap.height;
 
-      const padding = Number.isFinite(options.padding) ? options.padding : 10;
-      const fontSize = Number.isFinite(options.fontSize) ? options.fontSize : 16;
+      const padding = Number.isFinite(options.padding) ? options.padding! : 10;
+      const fontSize = Number.isFinite(options.fontSize) ? options.fontSize! : 16;
       const secondaryFontSize = Math.max(10, fontSize - 2);
       const overlayHeight = Math.max(50, fontSize + secondaryFontSize + padding * 3);
       const overlayWidth = Math.max(10, width - padding * 2);
@@ -248,7 +292,9 @@ export class QrEmbedder {
       }
 
       image.composite(overlay, padding, overlayY, {
-        mode: Jimp.BLEND_SOURCE_OVER
+        mode: Jimp.BLEND_SOURCE_OVER,
+        opacitySource: 1,
+        opacityDest: 1
       });
 
       return await image.getBufferAsync(image.getMIME() || Jimp.MIME_PNG);
@@ -261,12 +307,8 @@ export class QrEmbedder {
 
   /**
    * Optimize image for output
-   * @param {Buffer} imageBuffer - Image buffer
-   * @param {string} format - Output format (png, jpeg, webp)
-   * @param {Object} options - Optimization options
-   * @returns {Promise<Buffer>} Optimized image
    */
-  static async optimizeImage(imageBuffer, format = 'png', options = {}) {
+  static async optimizeImage(imageBuffer: Buffer, format: string = 'png', options: OptimizeOptions = {}): Promise<Buffer> {
     const image = await Jimp.read(imageBuffer);
     const targetFormat = (format || '').toLowerCase();
 
@@ -282,12 +324,13 @@ export class QrEmbedder {
         if (options.quality) {
           image.quality(clamp(options.quality, 1, 100));
         }
+        // @ts-expect-error — Jimp MIME_WEBP may not be typed in all versions
         return image.getBufferAsync(Jimp.MIME_WEBP);
       }
       case 'png':
       default: {
-        if (typeof options.compressionLevel === 'number' && image.deflateLevel) {
-          image.deflateLevel(clamp(options.compressionLevel, 0, 9));
+        if (typeof options.compressionLevel === 'number' && (image as unknown as { deflateLevel?: (level: number) => void }).deflateLevel) {
+          (image as unknown as { deflateLevel: (level: number) => void }).deflateLevel(clamp(options.compressionLevel, 0, 9));
         }
         return image.getBufferAsync(Jimp.MIME_PNG);
       }
@@ -296,10 +339,8 @@ export class QrEmbedder {
 
   /**
    * Validate design file
-   * @param {Buffer} buffer - Image buffer
-   * @returns {Promise<Object>} Validation result
    */
-  static async validateDesign(buffer) {
+  static async validateDesign(buffer: Buffer): Promise<DesignValidation> {
     try {
       const image = await Jimp.read(buffer);
       const width = image.bitmap.width;
@@ -307,16 +348,14 @@ export class QrEmbedder {
       const mime = image.getMIME();
       const format = (mime || '').split('/').pop()?.toLowerCase() || 'unknown';
 
-      const errors = [];
-      const warnings = [];
+      const errors: string[] = [];
+      const warnings: string[] = [];
 
-      // Check format
       const validFormats = ['jpeg', 'jpg', 'png', 'webp', 'tiff', 'bmp', 'gif'];
       if (!validFormats.includes(format)) {
         errors.push(`Unsupported format: ${format}`);
       }
 
-      // Check dimensions
       const minWidth = 300;
       const minHeight = 300;
       const maxWidth = 10000;
@@ -330,7 +369,6 @@ export class QrEmbedder {
         errors.push(`Image too large. Maximum ${maxWidth}x${maxHeight}px`);
       }
 
-      // Check for optimal print size
       if (width < 1200 || height < 1200) {
         warnings.push('Image resolution may be too low for high-quality printing');
       }
@@ -348,10 +386,11 @@ export class QrEmbedder {
           hasAlpha: hasAlphaChannel(image.bitmap.data)
         }
       };
-    } catch (error) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
       return {
         valid: false,
-        errors: [`Invalid image file: ${error.message}`],
+        errors: [`Invalid image file: ${message}`],
         warnings: []
       };
     }
@@ -359,10 +398,8 @@ export class QrEmbedder {
 
   /**
    * Sanitize placement object - ensure all values are safe integers
-   * @param {Object} placement - Raw placement object
-   * @returns {Object} Sanitized placement with integer values
    */
-  static sanitizePlacement(placement) {
+  static sanitizePlacement(placement: Record<string, unknown>): Placement {
     if (!placement || typeof placement !== 'object') {
       throw new Error('Invalid placement object');
     }
@@ -376,11 +413,11 @@ export class QrEmbedder {
   }
 }
 
-function clamp(value, min, max) {
+function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
-function parseColor(color, fallback) {
+function parseColor(color: string | undefined, fallback: number): number {
   if (typeof color !== 'string') {
     return fallback;
   }
@@ -440,11 +477,11 @@ function parseColor(color, fallback) {
   return fallback;
 }
 
-function getFontVariant(color) {
+function getFontVariant(color: string | undefined): string {
   return isWhiteColor(color) ? 'white' : 'black';
 }
 
-function isWhiteColor(color) {
+function isWhiteColor(color: string | undefined): boolean {
   if (!color) {
     return false;
   }
@@ -457,9 +494,9 @@ function isWhiteColor(color) {
     normalized === 'rgba(255,255,255,1)';
 }
 
-async function loadFont(requestedSize, variant) {
+async function loadFont(requestedSize: number, variant: string): Promise<{ font: ReturnType<typeof Jimp.loadFont> extends Promise<infer T> ? T : never; size: number }> {
   const palette = FONT_PATHS[variant] || FONT_PATHS.black;
-  const closestSize = FONT_SIZES.reduce((prev, curr) => (
+  const closestSize = [...FONT_SIZES].reduce((prev, curr) => (
     Math.abs(curr - requestedSize) < Math.abs(prev - requestedSize) ? curr : prev
   ), FONT_SIZES[0]);
 
@@ -470,7 +507,7 @@ async function loadFont(requestedSize, variant) {
   };
 }
 
-function hasAlphaChannel(data) {
+function hasAlphaChannel(data: Buffer): boolean {
   for (let i = 3; i < data.length; i += 4) {
     if (data[i] < 255) {
       return true;

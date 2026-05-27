@@ -28,7 +28,7 @@ export default function Navbar() {
                 <div className="flex justify-between items-center h-14">
                     <div className="flex items-center space-x-3 md:space-x-8">
                         <a href="/" className="flex items-center space-x-2 shrink-0">
-                            <Image src={Logo} alt="Kweli" width={32} height={32} />
+                            <Image src={Logo} alt="Kweli" width={32} height={32} style={{ height: "auto" }} />
                             <span className={`font-sans font-bold text-xl md:text-2xl tracking-tight hidden sm:block ${scrolled ? "text-gray-900" : "text-white"}`}>kweli</span>
                         </a>
 
@@ -51,6 +51,9 @@ export default function Navbar() {
 
                     {/* Desktop Links */}
                     <div className="hidden md:flex items-center space-x-10 text-[15px] font-semibold">
+                        <Link href="/scan" className={`transition-colors hover:opacity-80 flex items-center gap-1.5 font-extrabold ${scrolled ? "text-[#493DE6] bg-[#493DE6]/10 px-3 py-1 rounded-full" : "text-[#E6FA05] bg-white/10 px-3 py-1 rounded-full animate-pulse"}`}>
+                            <span className="w-2 h-2 rounded-full bg-[#E6FA05]"></span> Scan Product
+                        </Link>
                         <a href="#features" className={`transition-colors hover:opacity-80 ${scrolled ? "text-gray-900" : "text-white"}`}>Features</a>
                         <a href="#rewards" className={`transition-colors hover:opacity-80 ${scrolled ? "text-gray-900" : "text-white"}`}>Rewards</a>
                         <a href="#news" className={`transition-colors hover:opacity-80 ${scrolled ? "text-gray-900" : "text-white"}`}>News & Blog</a>
@@ -94,9 +97,13 @@ export default function Navbar() {
                 {/* Mobile Menu Dropdown */}
                 {mobileMenuOpen && (
                     <div className="md:hidden absolute left-0 right-0 top-[100%] bg-white border-t border-gray-100 p-6 space-y-4 shadow-xl text-center min-h-[100vh]">
-                        <a href="#features" className="block text-gray-900 font-semibold text-xl py-4 border-b border-gray-50">Features</a>
-                        <a href="#rewards" className="block text-gray-900 font-semibold text-xl py-4 border-b border-gray-50">Rewards</a>
-                        <a href="#news" className="block text-gray-900 font-semibold text-xl py-4 border-b border-gray-50">News & Blog</a>
+                        <Link href="/scan" className="block text-[#493DE6] font-extrabold text-2xl py-4 border-b border-gray-100 bg-[#493DE6]/5 rounded-2xl" onClick={() => setMobileMenuOpen(false)}>
+                            🚀 Scan Product
+                        </Link>
+                        <a href="#features" className="block text-gray-900 font-semibold text-xl py-4 border-b border-gray-50" onClick={() => setMobileMenuOpen(false)}>Features</a>
+                        <a href="#rewards" className="block text-gray-900 font-semibold text-xl py-4 border-b border-gray-50" onClick={() => setMobileMenuOpen(false)}>Rewards</a>
+                        <a href="#news" className="block text-gray-900 font-semibold text-xl py-4 border-b border-gray-50" onClick={() => setMobileMenuOpen(false)}>News & Blog</a>
+
                         <div className="pt-8 flex flex-col gap-4">
                             <a href="#" className="w-full py-4 rounded-full font-semibold text-lg border-2 border-[#493DE6] text-[#493DE6]">Login</a>
                             <a href="https://expo.dev/preview/update?message=Fix+assets&updateRuntimeVersion=1.0.0&createdAt=2025-10-28T15%3A34%3A35.106Z&slug=exp&projectId=aea820d4-6839-4ab6-a9ef-be6944be8cf0&group=62a10b29-834d-4415-b88a-8e0e5799cba6" target="_blank" rel="noopener noreferrer" className="w-full py-4 rounded-full font-semibold text-lg bg-[#493DE6] text-white">Download app</a>

@@ -1,5 +1,35 @@
 import Papa from 'papaparse';
 
+interface CsvRow {
+  [key: string]: string;
+}
+
+interface ValidatedProduct {
+  productId: string;
+  name: string;
+  batchNumber: string;
+  manufacturingDate: string;
+  expiryDate: string;
+  quantity: number;
+  startingSerialNumber: number;
+  qrPlacement: { x: number; y: number; width: number; height: number } | null;
+  description: string;
+  category: string;
+}
+
+interface ParseResult {
+  success: boolean;
+  data: ValidatedProduct[];
+  errors: string[];
+  rowCount: number;
+}
+
+interface RowValidationResult {
+  valid: boolean;
+  errors: string[];
+  data: ValidatedProduct;
+}
+
 /**
  * CSV Parser Service - Handles parsing and validation of product CSV imports
  * Following SOLID principles: Single Responsibility
@@ -8,32 +38,33 @@ export class CsvParser {
   /**
    * Parse CSV file and return structured data
    * @param {File|Buffer|string} csvData - CSV file content
-   * @returns {Promise<Object>} Parsed and validated data
+   * @returns {Promise<ParseResult>} Parsed and validated data
    */
-  static async parse(csvData) {
+  static async parse(csvData: File | Buffer | string): Promise<ParseResult> {
     return new Promise((resolve, reject) => {
-      Papa.parse(csvData, {
+      Papa.parse(csvData as string, {
         header: true,
         skipEmptyLines: true,
-        transformHeader: (header) => header.trim(),
+        transformHeader: (header: string) => header.trim(),
         complete: (results) => {
           try {
-            const validatedData = this.validate(results.data);
+            const validatedData = this.validate(results.data as CsvRow[]);
             resolve({
               success: true,
               data: validatedData,
               errors: [],
               rowCount: validatedData.length
             });
-          } catch (error) {
+          } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Unknown error';
             reject({
               success: false,
-              error: error.message,
+              error: message,
               data: []
             });
           }
         },
-        error: (error) => {
+        error: (error: Error) => {
           reject({
             success: false,
             error: error.message,
@@ -46,12 +77,12 @@ export class CsvParser {
 
   /**
    * Validate CSV rows
-   * @param {Array} rows - Parsed CSV rows
-   * @returns {Array} Validated rows
+   * @param {CsvRow[]} rows - Parsed CSV rows
+   * @returns {ValidatedProduct[]} Validated rows
    */
-  static validate(rows) {
-    const errors = [];
-    const validatedRows = [];
+  static validate(rows: CsvRow[]): ValidatedProduct[] {
+    const errors: { row: number; errors: string[] }[] = [];
+    const validatedRows: ValidatedProduct[] = [];
 
     rows.forEach((row, index) => {
       const rowNumber = index + 2; // +2 for header and 0-index
@@ -76,12 +107,12 @@ export class CsvParser {
 
   /**
    * Validate individual row
-   * @param {Object} row - CSV row data
+   * @param {CsvRow} row - CSV row data
    * @param {number} rowNumber - Row number for error reporting
-   * @returns {Object} Validation result
+   * @returns {RowValidationResult} Validation result
    */
-  static validateRow(row, rowNumber) {
-    const errors = [];
+  static validateRow(row: CsvRow, rowNumber: number): RowValidationResult {
+    const errors: string[] = [];
     const requiredFields = ['productId', 'name', 'batchNumber', 'manufacturingDate', 'expiryDate'];
 
     // Check required fields
@@ -163,20 +194,20 @@ export class CsvParser {
    * @param {string} dateString - Date in YYYY-MM-DD format
    * @returns {boolean}
    */
-  static isValidDate(dateString) {
+  static isValidDate(dateString: string): boolean {
     const regex = /^\d{4}-\d{2}-\d{2}$/;
     if (!regex.test(dateString)) return false;
     
     const date = new Date(dateString);
-    return date instanceof Date && !isNaN(date);
+    return date instanceof Date && !isNaN(date.getTime());
   }
 
   /**
    * Determine import mode based on CSV data
-   * @param {Array} rows - Validated CSV rows
-   * @returns {string} 'individual' or 'batch'
+   * @param {ValidatedProduct[]} rows - Validated CSV rows
+   * @returns {'individual' | 'batch'} 'individual' or 'batch'
    */
-  static determineImportMode(rows) {
+  static determineImportMode(rows: ValidatedProduct[]): 'individual' | 'batch' {
     // If any row has quantity > 1, it's batch mode
     const hasBatchMode = rows.some(row => row.quantity > 1);
     
@@ -189,4 +220,3 @@ export class CsvParser {
 }
 
 export default CsvParser;
-
