@@ -16,10 +16,16 @@ import {
   Flame,
   ChevronRight,
   TrendingUp,
-  AlertOctagon
+  AlertOctagon,
+  Settings
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/neon-button";
 import Confetti from "@/components/Confetti";
+import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
+import Navbar from "@/components/Navbar";
+import MobileNav from "@/components/MobileNav";
+import { api } from "@/lib/api-client";
 
 type ScanState = "prompt" | "scanning" | "verifying" | "result";
 type ResultStatus = "authentic" | "duplicate" | "fake" | "error";
@@ -197,51 +203,24 @@ export default function WebScanPage() {
   const handleScannedData = async (data: string) => {
     setState("verifying");
     
-    let serial = "";
-    let hash = "";
+    let codeToVerify = data.trim();
 
     try {
       if (data.includes("/v/")) {
-        // Dynamic product URL scan
         const url = new URL(data);
         const pathParts = url.pathname.split("/").filter(p => p.length > 0);
-        serial = pathParts[pathParts.length - 1];
-      } else if (data.includes("hash=")) {
-        // Raw hash URL parameter scan
-        const match = data.match(/[?&]hash=([^&]+)/);
-        if (match) hash = match[1];
-      } else if (data.length === 64) {
-        // Pure 64-character hex hash scan
-        hash = data;
-      } else {
-        // Treat as a direct serial code
-        serial = data;
+        codeToVerify = pathParts[pathParts.length - 1];
+      } else if (data.includes("code=")) {
+        const match = data.match(/[?&]code=([^&]+)/);
+        if (match) codeToVerify = match[1];
       }
 
-      if (hash) {
-        // Call API endpoint for hash scanning
-        const res = await fetch(`/api/products/scan/${hash}`, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" }
-        });
-        const resultData = await res.json();
-        processScanResponse(resultData);
-      } else if (serial) {
-        // Call API endpoint for serial scanning
-        const res = await fetch(`/api/scan/${serial}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({})
-        });
-        const resultData = await res.json();
-        processScanResponse(resultData);
-      } else {
-        throw new Error("Could not parse a valid serial or hash from the QR code.");
-      }
+      const res = await api.verification.scan({ code: codeToVerify });
+      processScanResponse(res);
     } catch (err: any) {
       console.error("Scan processing error:", err);
       setStatus("error");
-      setErrorMessage(err.message || "Invalid product code structure.");
+      setErrorMessage(err.message || "Failed to verify product code.");
       setState("result");
       triggerVibration("error");
     }
@@ -249,41 +228,39 @@ export default function WebScanPage() {
 
   // Process the API response
   const processScanResponse = (data: any) => {
-    if (data.success) {
-      // Set statuses
-      setStatus(data.status); // authentic, duplicate, fake
-      
-      // Save product information
-      if (data.product) {
-        setProductData({
-          name: data.product.name,
-          brand: data.product.brand || data.product.company?.name || data.product.company || "Kweli Verified",
-          company: data.product.company,
-          manufacturer: data.product.manufacturer,
-          batchNumber: data.product.batchNumber || data.product.batch_number,
-          serialNumber: data.product.serialNumber || data.product.serial_number || data.product.serial_code,
-          manufacturingDate: data.product.manufacturingDate || data.product.manufacturing_date,
-          expiryDate: data.product.expiryDate || data.product.expiry_date,
-          isExpired: data.product.isExpired || data.product.is_expired,
-          hederaExplorerUrl: data.product.hederaExplorerUrl || data.authenticity?.hederaExplorerUrl,
-          scanCount: data.product.scanCount
-        });
-      }
+    let uiStatus: ResultStatus = "authentic";
 
-      // Save rewards
-      const tokensAwarded = data.reward?.amount || data.reward || 0;
-      setRewardAmount(tokensAwarded);
-
-      if (data.status === "authentic") {
-        incrementDailyGoal();
-      }
-
-      triggerVibration(data.status);
+    if (data.outcome === "AUTHENTIC_FIRST_SCAN") {
+      uiStatus = "authentic";
+    } else if (data.outcome === "ALREADY_ACTIVATED_WARNING") {
+      uiStatus = "duplicate";
     } else {
-      setStatus("fake");
-      setErrorMessage(data.error || "This cryptographic signature could not be verified.");
-      triggerVibration("fake");
+      uiStatus = "fake";
     }
+
+    setStatus(uiStatus);
+
+    if (data.product) {
+      setProductData({
+        name: data.product.name,
+        brand: data.product.brand || "Kweli Verified",
+        manufacturer: data.product.brand,
+        batchNumber: data.product.batchNumber,
+        serialNumber: data.product.unitSerial,
+        manufacturingDate: data.product.mfgDate,
+        expiryDate: data.product.expDate,
+        scanCount: data.scanCount,
+      });
+    }
+
+    setRewardAmount(0);
+    setErrorMessage(data.message || "");
+
+    if (uiStatus === "authentic") {
+      incrementDailyGoal();
+    }
+
+    triggerVibration(uiStatus);
     setState("result");
   };
 
@@ -296,75 +273,89 @@ export default function WebScanPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0E27] text-white flex flex-col items-center justify-between pb-12 font-grotesk overflow-x-hidden relative">
-      
-      {/* Background ambient glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#493DE6]/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
+    <div className="bg-[#b4d2ea] min-h-screen text-[#1a1615] font-sans selection:bg-blue-200 selection:text-black overflow-x-hidden relative flex flex-col pb-28">
+      {/* Background Gradient / Clouds simulation matching landing page */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute inset-0 bg-gradient-to-b from-[#b4d2ea] via-[#c6ddec] to-[#e4eef6]"></div>
+        <div className="absolute top-20 left-[-10%] w-[40%] h-[400px] bg-white/40 blur-[100px] rounded-full mix-blend-overlay"></div>
+        <div className="absolute top-40 right-[-10%] w-[30%] h-[300px] bg-white/40 blur-[80px] rounded-full mix-blend-overlay"></div>
+      </div>
 
-      {/* Confetti Explosion Component */}
       <Confetti active={state === "result" && status === "authentic"} />
+      
+      <Navbar />
 
-      {/* HEADER SECTION */}
-      <header className="w-full max-w-md px-6 pt-6 flex justify-between items-center z-10 shrink-0">
-        <button 
-          onClick={() => {
-            stopCamera();
-            window.location.href = "/";
-          }}
-          className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all border border-white/10"
-        >
-          <ArrowLeft className="w-5 h-5 text-gray-300" />
-        </button>
-        <div className="flex items-center space-x-2 bg-white/5 border border-white/10 px-4 py-1.5 rounded-full">
-          <Flame className="w-5 h-5 text-orange-500 fill-orange-500 animate-pulse" />
-          <span className="text-sm font-bold tracking-wider">{dailyScans} Scans Streak</span>
+      {/* Top Settings Icon like Shazam (Mobile) */}
+      {/* <div className="absolute top-20 right-6 z-20 md:hidden">
+        <div className="w-10 h-10 bg-white/40 backdrop-blur-xl rounded-full flex items-center justify-center border border-white/40 shadow-lg">
+          <Settings className="w-5 h-5 text-[#1a1615]" />
         </div>
-      </header>
+      </div> */}
 
       {/* MAIN CONTAINER */}
-      <main className="w-full max-w-md px-6 flex-1 flex flex-col justify-center items-center py-6 z-10">
+      <main className="w-full px-4 flex-1 flex flex-col justify-center items-center pt-28 pb-6 z-10">
         
         {/* STATE: PROMPT */}
         {state === "prompt" && (
-          <div className="w-full flex flex-col items-center text-center animate-in zoom-in-95 duration-300">
-            <div className="relative w-40 h-40 bg-gradient-to-tr from-[#493DE6] to-[#E6FA05]/20 rounded-full flex items-center justify-center mb-8 shadow-2xl border border-white/20">
-              <Camera className="w-20 h-20 text-[#E6FA05]" />
-              <div className="absolute inset-0 rounded-full border border-[#E6FA05]/30 animate-ping duration-1000"></div>
-            </div>
-            
-            <h1 className="text-3xl font-extrabold tracking-tight mb-3">
-              Web Scanner
+          <div className="w-full flex flex-col items-center justify-center text-center animate-in zoom-in-95 duration-300 min-h-[60vh]">
+            <h1 className="text-2xl md:text-4xl font-bold tracking-tight text-[#1a1615] mb-10">
+              Tap to Kweli
             </h1>
-            <p className="text-gray-400 text-sm leading-relaxed mb-8 px-4">
-              Scan product QR codes using your camera. Instantly verify authenticity on Hedera Hashgraph and earn VFY tokens!
-            </p>
 
-            {/* Duolingo style Daily Goal progress card */}
-            <div className="w-full bg-white/5 border border-white/10 rounded-3xl p-5 mb-8 text-left">
-              <div className="flex justify-between items-center mb-3">
-                <div className="flex items-center space-x-2">
-                  <Award className="w-5 h-5 text-[#E6FA05]" />
-                  <span className="font-bold text-sm tracking-wide text-[#E6FA05] uppercase">Daily Scan Goal</span>
+            {/* The Giant Scanner Button */}
+            <div className="relative flex items-center justify-center mb-16">
+              {/* Shiny Shimmer Ring */}
+              {/* <motion.div 
+                animate={{ rotate: 360 }}
+                transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                className="absolute w-56 h-56 md:w-72 md:h-72 rounded-full border border-white/30"
+                style={{
+                  background: "linear-gradient(rgba(255,255,255,0.4), rgba(255,255,255,0)) border-box",
+                }}
+              > */}
+                {/* The white shimmer spec */}
+                {/* <div className="absolute top-0 left-1/2 -ml-8 w-16 h-[2px] bg-red-500 blur-[2px] rounded-full" /> */}
+              {/* </motion.div> */}
+
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={startCamera}
+                className="group w-46 h-46 md:w-52 md:h-52 rounded-full bg-white/40 backdrop-blur-xl border border-white/60 shadow-[0_20px_60px_rgba(0,0,0,0.1)] flex items-center justify-center relative overflow-hidden z-10"
+              >
+                {/* Neon Borders */}
+                {/* <span className="absolute h-[2px] opacity-0 group-hover:opacity-100 transition-all duration-500 ease-in-out inset-x-0 inset-y-0 bg-gradient-to-r w-3/4 mx-auto from-transparent to-transparent block z-30" />
+                <span className="absolute group-hover:opacity-50 transition-all duration-500 ease-in-out inset-x-0 h-[2px] bottom-0 bg-gradient-to-r w-3/4 mx-auto from-transparent to-transparent block z-30" /> */}
+
+                {/* Inner subtle glow */}
+                <div className="absolute inset-0 rounded-full bg-[#0c70ce] z-0"></div>
+                
+                <div className="relative w-28 h-28 md:w-32 md:h-32 z-20 ">
+                  <Image src="/icon.png" alt="Kweli Logo" fill className="object-contain" />
                 </div>
-                <span className="text-xs text-gray-400 font-semibold">{dailyScans} / {DAILY_GOAL}</span>
-              </div>
-              <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-[#493DE6] to-[#E6FA05] rounded-full transition-all duration-500" 
-                  style={{ width: `${Math.min((dailyScans / DAILY_GOAL) * 100, 100)}%` }}
-                ></div>
-              </div>
-              <p className="text-xs text-gray-400 mt-2 font-medium">
-                {dailyScans >= DAILY_GOAL ? "🎉 Goal completed! Keep scanning to secure the chain." : "Complete scans to secure the supply chain."}
-              </p>
+              </motion.button>
             </div>
 
-            <Button 
-              onClick={startCamera}
-              className="w-full py-7 rounded-2xl bg-[#493DE6] hover:bg-[#3b31c2] text-white font-extrabold text-lg shadow-xl shadow-[#493DE6]/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
-            >
-              Start Verifying
-            </Button>
+            {/* Recently Found (Gamification) */}
+            {/* <div className="w-full max-w-lg mt-auto mb-4">
+              <h2 className="text-sm font-bold text-[#453f3d] mb-4 px-2 text-left tracking-wide uppercase">Recently Verified</h2>
+              
+              <div className="bg-white/40 backdrop-blur-xl rounded-[24px] p-4 flex items-center justify-between border border-white/50 hover:bg-white/60 transition-colors cursor-pointer shadow-xl text-left">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 bg-gray-200 rounded-xl overflow-hidden relative">
+                    <Image src="/usecase.avif" alt="Product" fill className="object-cover" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-[#453f3d] font-semibold uppercase tracking-wider mb-1">1 day ago</div>
+                    <div className="font-bold text-[#1a1615] flex items-center gap-2 text-base">
+                      Vintage Watch 
+                      <span className="bg-[#E6FA05] text-black text-[9px] px-1.5 py-0.5 rounded flex items-center justify-center font-bold">V</span>
+                    </div>
+                    <div className="text-xs text-[#453f3d] mt-0.5">Rolex</div>
+                  </div>
+                </div>
+              </div>
+            </div> */}
           </div>
         )}
 
@@ -598,14 +589,14 @@ export default function WebScanPage() {
                       const code = productData?.serialNumber || manualCode;
                       window.location.href = `/report?serial=${encodeURIComponent(code)}`;
                     }}
-                    variant="destructive"
+                    variant="solid"
                     className="w-full py-6 rounded-2xl border border-red-500/40 bg-red-950/20 hover:bg-red-950/40 text-red-500 font-bold"
                   >
                     Report Suspicious Code
                   </Button>
                   <Button 
                     onClick={startCamera}
-                    variant="outline"
+                    variant="solid"
                     className="w-full py-6 rounded-2xl border-white/10 bg-white/5 text-white hover:bg-white/10 font-bold"
                   >
                     Scan Another Product
@@ -648,7 +639,7 @@ export default function WebScanPage() {
                   </Button>
                   <Button 
                     onClick={startCamera}
-                    variant="outline"
+                    variant="solid"
                     className="w-full py-6 rounded-2xl border-white/10 bg-white/5 text-white hover:bg-white/10 font-bold"
                   >
                     Scan Another Product
@@ -692,10 +683,7 @@ export default function WebScanPage() {
       {/* CANVAS FOR DYNAMIC FRAMES (HIDDEN) */}
       <canvas ref={canvasRef} className="hidden" />
 
-      {/* FOOTER METRICS */}
-      <footer className="w-full max-w-md px-6 text-center text-xs text-gray-500 font-medium tracking-wide z-10 shrink-0">
-        Secured by <span className="text-white hover:underline cursor-pointer" onClick={() => window.open("https://hedera.com")}>Hedera Hashgraph</span> &copy; 2026 Kweli Network
-      </footer>
+      <MobileNav />
     </div>
   );
 }

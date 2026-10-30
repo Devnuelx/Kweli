@@ -18,9 +18,7 @@ export class FlutterwaveProvider extends PaymentProvider {
    */
   async createPaymentLink(data: PaymentLinkData): Promise<string> {
     if (!this.secretKey) {
-      console.warn("FLUTTERWAVE_SECRET_KEY is missing. Using dummy payment URL.");
-      // Return a dummy link if no API key is present for development
-      return `https://dummy-payment-provider.com/pay/${data.reference}`;
+      throw new Error("FLUTTERWAVE_SECRET_KEY is not configured.");
     }
 
     const payload = {
@@ -62,8 +60,7 @@ export class FlutterwaveProvider extends PaymentProvider {
    */
   async verifyTransaction(transactionId: string): Promise<TransactionDetails> {
     if (!this.secretKey) {
-      console.warn("FLUTTERWAVE_SECRET_KEY is missing. Returning success for dummy verify.");
-      return { status: 'successful', amount: 100, currency: 'USD' }; // Dummy success
+      throw new Error("FLUTTERWAVE_SECRET_KEY is not configured.");
     }
 
     const response = await fetch(`${this.baseUrl}/transactions/${transactionId}/verify`, {

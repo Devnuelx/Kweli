@@ -3,6 +3,25 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@font-face {
+  font-family: 'Exensa Grotesk';
+  src: url('/fonts/exensa/ExensaGrotesk-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Exensa Grotesk';
+  src: url('/fonts/exensa/ExensaGrotesk-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Exensa Grotesk';
+  src: url('/fonts/exensa/ExensaGrotesk-Black.woff2') format('woff2');
+  font-weight: 900;
+  font-style: normal;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -143,7 +162,7 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Funnel Display', sans-serif;
+    font-family: 'Exensa Grotesk', 'Funnel Display', sans-serif;
   }
 
   p {

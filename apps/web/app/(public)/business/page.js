@@ -10,7 +10,12 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useSession, signIn } from "next-auth/react";
+import Image from "next/image";
+import { useAuth } from "@/lib/auth-context";
+import TrustBar from "@/components/landing/TrustBar";
+import PainReframe from "@/components/business/PainReframe";
+import FeatureGrid from "@/components/business/FeatureGrid";
+
 function AnimatedNumber({ value, duration = 1500, suffix = "" }) {
   const [count, setCount] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
@@ -67,14 +72,14 @@ export default function BusinessLanding() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const isBusiness = pathname.startsWith("/business");
 
   const handleGetStarted = () => {
     setLoading(true);
-    if (session) {
+    if (isAuthenticated) {
       // For authenticated users, use immediate navigation
       window.location.href = '/dashboard';
     } else {
@@ -87,7 +92,7 @@ export default function BusinessLanding() {
       <Navbar />
 
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 md:pb-32 overflow-hidden min-h-screen flex items-center justify-center font-funnel-display">
+      <section className="relative pt-32 pb-20 md:pb-32 overflow-hidden min-h-[120vh] flex flex-col items-center justify-start font-funnel-display">
         {/* Background Dome Effect */}
         <div className="absolute top-[10%] left-1/2 -translate-x-1/2 w-[1200px] h-[600px] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none z-0" />
         <div className="absolute top-[5%] left-1/2 -translate-x-1/2 w-[800px] h-[400px] border border-white/5 rounded-full z-0" />
@@ -133,6 +138,18 @@ export default function BusinessLanding() {
             </button>
           </form>
         </div>
+
+        {/* Floating Dashboard Mockup */}
+        <motion.div 
+          initial={{ opacity: 0, y: 100 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1, delay: 0.2, ease: "easeOut" }}
+          className="mt-10 w-full max-w-6xl relative z-20 px-4"
+        >
+          <div className="relative w-full aspect-[16/9] md:aspect-[21/9] rounded-t-[32px] md:rounded-t-[48px] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.3)] border border-white/20 border-b-0">
+            <Image src="/hero/kweli-app.png" alt="Kweli Dashboard" fill className="object-cover object-top" />
+          </div>
+        </motion.div>
       </section>
 
       {/* Stats Impact Section - Bento Grid */}
@@ -140,7 +157,7 @@ export default function BusinessLanding() {
         <div className="max-w-7xl mx-auto px-6 lg:px-10">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-6xl font-bold text-white tracking-tight mb-4">
-              Numbers Don't Lie
+              Numbers Don&apos;t Lie
             </h2>
           </div>
 
@@ -209,119 +226,9 @@ export default function BusinessLanding() {
         </div>
       </section>
 
-      {/* How It Works */}
-      <section id="how-it-works" className="py-24 md:py-32 px-6 lg:px-8 relative bg-[#0A0E27]">
-        <div className="max-w-7xl mx-auto w-full">
-          <div className="text-center mb-20">
-            <h2 className="text-4xl md:text-6xl font-bold mb-6 font-funnel-display tracking-tight">
-              Scale without limits
-            </h2>
-            <p className="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
-              Three simple steps to protect every product and expand your global reach.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                step: "01",
-                title: "Onboard Products",
-                description:
-                  "Create your account and upload products in bulk. Each item is securely registered on the blockchain.",
-                icon: Package,
-                bgColor: "bg-blue-500/10",
-                iconColor: "text-blue-400"
-              },
-              {
-                step: "02",
-                title: "Embed QR Codes",
-                description:
-                  "Generate tamper-proof codes and embed them directly into your product designs or packaging.",
-                icon: QrCode,
-                bgColor: "bg-purple-500/10",
-                iconColor: "text-purple-400"
-              },
-              {
-                step: "03",
-                title: "Monitor Growth",
-                description:
-                  "Track every scan in real-time. Gain deep insights into product movement and consumer behavior.",
-                icon: Smartphone,
-                bgColor: "bg-green-500/10",
-                iconColor: "text-green-400"
-              }
-            ].map((item, i) => (
-              <motion.div
-                key={i}
-                whileHover={{ y: -10 }}
-                className="p-8 rounded-[32px] bg-white/5 border border-white/10 hover:bg-white/[0.08] transition-all flex flex-col items-start"
-              >
-                <div className={`w-14 h-14 rounded-2xl ${item.bgColor} flex items-center justify-center mb-8`}>
-                  <item.icon className={`w-6 h-6 ${item.iconColor}`} />
-                </div>
-                <div className="text-sm font-mono text-gray-500 mb-4">{item.step}</div>
-                <h3 className="text-2xl font-bold mb-4 font-funnel-display text-white">{item.title}</h3>
-                <p className="text-gray-400 leading-relaxed mb-6">{item.description}</p>
-                <Link href="#" className="mt-auto text-white font-semibold flex items-center gap-2 group">
-                  Learn more <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </Link>
-              </motion.div>
-            ))}
-          </div>
-
-          <div className="mt-20 text-center">
-            <button onClick={handleGetStarted} className={`px-10 py-5 bg-white text-[#0A0E27] rounded-2xl font-bold hover:scale-105 transition-all shadow-xl shadow-white/5 ${loading ? 'opacity-60 cursor-not-allowed' : ''}`} type="button" disabled={loading}>
-              Get Started Now
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section id="features" className="py-24 md:py-32 px-6 lg:px-8 border-t border-white/5">
-        <div className="max-w-7xl mx-auto w-full">
-          <div className="flex flex-col md:flex-row justify-between items-end mb-20 gap-8">
-            <div className="max-w-2xl">
-              <h2 className="text-4xl md:text-6xl font-bold mb-6 font-funnel-display tracking-tight text-white italic">
-                The features you need,<br /> none you don't.
-              </h2>
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              {
-                icon: Shield,
-                title: "Blockchain Security",
-                description: "Immutable records for every single product batch."
-              },
-              {
-                icon: Zap,
-                title: "Dual Verification Modes",
-                description: "Secure QR codes and AI visual analysis for maximum protection."
-              },
-              {
-                icon: BarChart3,
-                title: "Live Insights",
-                description: "Real-time dashboard showing global scan activity."
-              },
-              {
-                icon: Lock,
-                title: "Fraud Prevention",
-                description: "Instant alerts for suspicious scan patterns."
-              }
-            ].map((feature, i) => (
-              <div key={i} className="group p-8 rounded-[40px] bg-[#111317] border border-white/5 hover:border-white/20 transition-all">
-                <div className="w-12 h-12 bg-white/5 rounded-xl mb-6 flex items-center justify-center group-hover:bg-blue-500/20 group-hover:text-blue-400 transition-colors">
-                  <feature.icon className="w-5 h-5" />
-                </div>
-                <h3 className="text-xl font-bold mb-4 font-funnel-display text-white">{feature.title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <TrustBar />
+      <PainReframe />
+      <FeatureGrid />
 
       {/* Final CTA */}
       <section className="py-24 md:py-40 px-6 lg:px-8 bg-[#0A0E27] relative overflow-hidden">

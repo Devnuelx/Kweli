@@ -324,7 +324,6 @@ export class QrEmbedder {
         if (options.quality) {
           image.quality(clamp(options.quality, 1, 100));
         }
-        // @ts-expect-error — Jimp MIME_WEBP may not be typed in all versions
         return image.getBufferAsync(Jimp.MIME_WEBP);
       }
       case 'png':

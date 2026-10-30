@@ -1,0 +1,324 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ==========================================================
+// 1. IDENTITY, ORGANIZATIONS & ACCESS
+// ==========================================================
+
+enum UserRole {
+  CONSUMER
+  BRAND_STAFF
+  BRAND_ADMIN
+  MODERATOR
+  SYSTEM_ADMIN
+}
+
+enum KybStatus {
+  UNVERIFIED
+  PENDING_REVIEW
+  VERIFIED
+  SUSPENDED
+  REJECTED
+}
+
+model User {
+  id               String           @id @default(uuid()) @db.Uuid
+  email            String           @unique @db.VarChar(255)
+  passwordHash     String           @map("password_hash") @db.VarChar(255)
+  firstName        String?          @map("first_name") @db.VarChar(100)
+  lastName         String?          @map("last_name") @db.VarChar(100)
+  phone            String?          @db.VarChar(50)
+  role             UserRole         @default(CONSUMER)
+  isEmailVerified  Boolean          @default(false) @map("is_email_verified")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  refreshSessions  RefreshSession[]
+  memberships      OrganizationMember[]
+  reports          Report[]
+  pointAccount     PointAccount?
+
+  @@map("users")
+}
+
+model RefreshSession {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  tokenHash    String    @map("token_hash") @db.VarChar(255)
+  userAgent    String?   @map("user_agent") @db.Text
+  ipAddress    String?   @map("ip_address") @db.VarChar(45)
+  isRevoked    Boolean   @default(false) @map("is_revoked")
+  expiresAt    DateTime  @map("expires_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("refresh_sessions")
+}
+
+model Organization {
+  id               String               @id @default(uuid()) @db.Uuid
+  legalName        String               @map("legal_name") @db.VarChar(255)
+  tradingName      String?              @map("trading_name") @db.VarChar(255)
+  registrationNum  String?              @unique @map("registration_num") @db.VarChar(100)
+  kybStatus        KybStatus            @default(UNVERIFIED) @map("kyb_status")
+  websiteUrl       String?              @map("website_url") @db.VarChar(255)
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+
+  members          OrganizationMember[]
+  brands           Brand[]
+  apiKeys          ApiKey[]
+
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  role           UserRole     @default(BRAND_STAFF)
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@map("organization_members")
+}
+
+model ApiKey {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  keyPrefix      String       @map("key_prefix") @db.VarChar(12) // kw_live_...
+  keyHash        String       @unique @map("key_hash") @db.VarChar(255)
+  name           String       @db.VarChar(100)
+  isRevoked      Boolean      @default(false) @map("is_revoked")
+  lastUsedAt     DateTime?    @map("last_used_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("api_keys")
+}
+
+// ==========================================================
+// 2. PRODUCT REGISTRY & IDENTIFIERS
+// ==========================================================
+
+model Brand {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  name           String       @db.VarChar(255)
+  logoUrl        String?      @map("logo_url") @db.Text
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  products       Product[]
+
+  @@map("brands")
+}
+
+model Product {
+  id             String          @id @default(uuid()) @db.Uuid
+  brandId        String          @map("brand_id") @db.Uuid
+  name           String          @db.VarChar(255)
+  gtin           String?         @db.VarChar(14)
+  sku            String?         @db.VarChar(100)
+  category       String?         @db.VarChar(100)
+  description    String?         @db.Text
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  brand          Brand           @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  batches        ProductBatch[]
+
+  @@unique([brandId, sku])
+  @@map("products")
+}
+
+model ProductBatch {
+  id             String          @id @default(uuid()) @db.Uuid
+  productId      String          @map("product_id") @db.Uuid
+  batchNumber    String          @map("batch_number") @db.VarChar(100)
+  mfgDate        DateTime?       @map("mfg_date")
+  expDate        DateTime?       @map("exp_date")
+  batchSize      Int             @map("batch_size")
+  isRecalled     Boolean         @default(false) @map("is_recalled")
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  units          ProductUnit[]
+
+  @@unique([productId, batchNumber])
+  @@map("product_batches")
+}
+
+enum UnitStatus {
+  ISSUED
+  ACTIVATED
+  FLAGGED_SUSPICIOUS
+  RECALLED
+}
+
+model ProductUnit {
+  id                 String          @id @default(uuid()) @db.Uuid
+  batchId            String          @map("batch_id") @db.Uuid
+  publicSerial       String          @unique @map("public_serial") @db.VarChar(64)
+  scratchPinHash     String          @map("scratch_pin_hash") @db.VarChar(255) // SHA-256 hash
+  scratchPinEncrypted String?        @map("scratch_pin_encrypted") @db.Text // AES-256-GCM encrypted for packaging export
+  status             UnitStatus      @default(ISSUED)
+  scanCount          Int             @default(0) @map("scan_count")
+  firstScannedAt     DateTime?       @map("first_scanned_at")
+  createdAt          DateTime        @default(now()) @map("created_at")
+
+  batch          ProductBatch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  scanEvents     ScanEvent[]
+  reports        Report[]
+
+  @@index([publicSerial])
+  @@map("product_units")
+}
+
+// ==========================================================
+// 3. VERIFICATION & TELEMETRY
+// ==========================================================
+
+enum VerificationOutcome {
+  AUTHENTIC_FIRST_SCAN
+  AUTHENTIC_ACTIVATED
+  ALREADY_ACTIVATED_WARNING
+  SUSPICIOUS_REPETITION
+  INVALID_OR_UNKNOWN_CODE
+  PRODUCT_RECALLED
+}
+
+model ScanEvent {
+  id             String              @id @default(uuid()) @db.Uuid
+  unitId         String?             @map("unit_id") @db.Uuid
+  rawCodeInput   String?             @map("raw_code_input") @db.VarChar(255)
+  outcome        VerificationOutcome
+  maskedIp       String?             @map("masked_ip") @db.VarChar(45)
+  userAgent      String?             @map("user_agent") @db.Text
+  city           String?             @db.VarChar(100)
+  country        String?             @db.VarChar(10)
+  createdAt      DateTime            @default(now()) @map("created_at")
+
+  unit           ProductUnit?        @relation(fields: [unitId], references: [id], onDelete: SetNull)
+
+  @@index([unitId])
+  @@index([createdAt(sort: Desc)])
+  @@map("scan_events")
+}
+
+// ==========================================================
+// 4. COUNTERFEIT REPORTING & EVIDENCE
+// ==========================================================
+
+enum ReportStatus {
+  RECEIVED
+  TRIAGE
+  UNDER_INVESTIGATION
+  SUBSTANTIATED
+  INCONCLUSIVE
+  DISMISSED
+}
+
+enum ReportSubmissionMode {
+  ANONYMOUS
+  AUTHENTICATED
+}
+
+model Report {
+  id               String               @id @default(uuid()) @db.Uuid
+  reportRef        String               @unique @map("report_ref") @db.VarChar(32) // KW-2026-XXXXX
+  accessSecret     String               @map("access_secret") @db.VarChar(64) // For anonymous status check
+  userId           String?              @map("user_id") @db.Uuid
+  unitId           String?              @map("unit_id") @db.Uuid
+  productName      String               @map("product_name") @db.VarChar(255)
+  brandName        String?              @map("brand_name") @db.VarChar(255)
+  description      String               @db.Text
+  purchaseLocation String?              @map("purchase_location") @db.VarChar(255)
+  mode             ReportSubmissionMode @default(ANONYMOUS)
+  status           ReportStatus         @default(RECEIVED)
+  moderatorNotes   String?              @map("moderator_notes") @db.Text
+  pointsAwarded    Boolean              @default(false) @map("points_awarded")
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+
+  user             User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  unit             ProductUnit?         @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  evidence         ReportEvidence[]
+  pointsEntries    PointLedgerEntry[]
+
+  @@index([reportRef])
+  @@index([userId])
+  @@index([status])
+  @@map("reports")
+}
+
+model ReportEvidence {
+  id             String       @id @default(uuid()) @db.Uuid
+  reportId       String       @map("report_id") @db.Uuid
+  storagePath    String       @map("storage_path") @db.VarChar(500)
+  mimeType       String       @map("mime_type") @db.VarChar(100)
+  fileSize       Int          @map("file_size")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  report         Report       @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@map("report_evidence")
+}
+
+// ==========================================================
+// 5. AUDITABLE POINTS LEDGER (NO TOKENS NOW)
+// ==========================================================
+
+enum PointTransactionType {
+  REPORT_SUBMITTED_CREDIT
+  REPORT_SUBSTANTIATED_BONUS
+  MANUAL_ADMIN_ADJUSTMENT
+  AWARD_REVERSAL_FRAUD
+  REDEMPTION_AIRTIME_CLAIM
+}
+
+model PointAccount {
+  id             String             @id @default(uuid()) @db.Uuid
+  userId         String             @unique @map("user_id") @db.Uuid
+  balance        Int                @default(0)
+  lifetimeEarned Int                @default(0) @map("lifetime_earned")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries        PointLedgerEntry[]
+
+  @@map("point_accounts")
+}
+
+model PointLedgerEntry {
+  id             String               @id @default(uuid()) @db.Uuid
+  accountId      String               @map("account_id") @db.Uuid
+  reportId       String?              @map("report_id") @db.Uuid
+  idempotencyKey String               @unique @map("idempotency_key") @db.VarChar(255)
+  type           PointTransactionType
+  amount         Int                  // Positive for credit, negative for debit
+  balanceAfter   Int                  @map("balance_after")
+  reason         String               @db.VarChar(255)
+  createdAt      DateTime             @default(now()) @map("created_at")
+
+  account        PointAccount         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  report         Report?              @relation(fields: [reportId], references: [id], onDelete: SetNull)
+
+  @@index([accountId])
+  @@index([idempotencyKey])
+  @@map("point_ledger_entries")
+}
