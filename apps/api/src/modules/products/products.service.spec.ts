@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { ProductsService } from './products.service';
 import { PrismaService } from '../../core/database/prisma.service';
 import { QrGeneratorService } from '../../core/qr/qr-generator.service';
+import { LabelSheetService } from '../../core/pdf/label-sheet.service';
 import { UnitStatus } from '@prisma/client';
 
 describe('ProductsService', () => {
@@ -47,6 +48,12 @@ describe('ProductsService', () => {
     generateBuffer: jest.fn().mockResolvedValue(Buffer.from('mock-qr-bytes')),
   };
 
+  const mockLabelSheetService = {
+    generateLabelSheetPdf: jest
+      .fn()
+      .mockResolvedValue(Buffer.from('%PDF-1.4 mock pdf data')),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
 
@@ -56,6 +63,7 @@ describe('ProductsService', () => {
         { provide: PrismaService, useValue: mockPrisma },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: QrGeneratorService, useValue: mockQrGenerator },
+        { provide: LabelSheetService, useValue: mockLabelSheetService },
       ],
     }).compile();
 
@@ -173,6 +181,54 @@ describe('ProductsService', () => {
       expect(stats.scanRate).toBe(24);
       expect(stats.recentScans).toHaveLength(1);
       expect(stats.recentScans[0].productName).toBe('Amox');
+    });
+  });
+
+  describe('exportBatchPdf', () => {
+    it('should export batch as industrial PDF label sheet with template options', async () => {
+      mockPrisma.productBatch.findFirst.mockResolvedValue({
+        id: 'batch-1',
+        batchNumber: 'LIP-001',
+        mfgDate: new Date('2026-01-01'),
+        expDate: new Date('2028-01-01'),
+        product: {
+          name: 'Lipitor 20mg',
+          sku: 'LIP-20MG',
+          brand: { name: 'Pfizer Global' },
+        },
+        units: [
+          {
+            id: 'u-1',
+            publicSerial: 'KW123456789012',
+            scratchPinEncrypted: null,
+          },
+        ],
+      });
+
+      const result = await service.exportBatchPdf(
+        'org-123',
+        'batch-1',
+        'a4-2x5',
+      );
+
+      expect(result.filename).toBe('labels-LIP-001-a4-2x5.pdf');
+      expect(result.batchNumber).toBe('LIP-001');
+      expect(result.pdfBuffer).toBeInstanceOf(Buffer);
+      expect(mockLabelSheetService.generateLabelSheetPdf).toHaveBeenCalledWith(
+        expect.objectContaining({
+          brandName: 'Pfizer Global',
+          productName: 'Lipitor 20mg',
+          batchNumber: 'LIP-001',
+          template: 'a4-2x5',
+          includeCutMarks: true,
+          units: [
+            {
+              publicSerial: 'KW123456789012',
+              scratchPin: null,
+            },
+          ],
+        }),
+      );
     });
   });
 });

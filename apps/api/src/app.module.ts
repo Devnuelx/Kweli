@@ -11,6 +11,7 @@ import { StorageModule } from './core/storage/storage.module';
 import { NotificationsModule } from './core/notifications/notifications.module';
 import { QrModule } from './core/qr/qr.module';
 import { CsvModule } from './core/csv/csv.module';
+import { PdfModule } from './core/pdf/pdf.module';
 
 // Feature modules
 import { AuthModule } from './modules/auth/auth.module';
@@ -43,6 +44,7 @@ import { ApiKeysModule } from './modules/api-keys/api-keys.module';
     NotificationsModule,
     QrModule,
     CsvModule,
+    PdfModule,
 
     // Feature modules
     AuthModule,

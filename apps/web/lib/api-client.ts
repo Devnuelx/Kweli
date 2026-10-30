@@ -304,8 +304,16 @@ export const api = {
       });
     },
 
-    async downloadBatchExport(batchId: string, format: 'csv' | 'zip' = 'csv', batchNumber?: string) {
-      const url = `${API_BASE_URL}/products/batches/${batchId}/export?format=${format}`;
+    async downloadBatchExport(
+      batchId: string,
+      format: 'csv' | 'zip' | 'pdf' = 'csv',
+      batchNumber?: string,
+      template?: string,
+    ) {
+      let url = `${API_BASE_URL}/products/batches/${batchId}/export?format=${format}`;
+      if (format === 'pdf' && template) {
+        url += `&template=${encodeURIComponent(template)}`;
+      }
       const headers = new Headers();
       if (currentAccessToken) {
         headers.set('Authorization', `Bearer ${currentAccessToken}`);
@@ -318,7 +326,8 @@ export const api = {
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
-      a.download = `batch-${batchNumber || batchId}.${format}`;
+      const fileSuffix = format === 'pdf' && template ? `-${template}` : '';
+      a.download = `batch-${batchNumber || batchId}${fileSuffix}.${format}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

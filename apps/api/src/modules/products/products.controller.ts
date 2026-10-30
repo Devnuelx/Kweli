@@ -15,6 +15,7 @@ import { ProductsService } from './products.service';
 import { RegisterProductDto } from './dto/register-product.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { LabelTemplateType } from '../../core/pdf/label-sheet.service';
 
 @ApiTags('Products')
 @ApiBearerAuth('jwt')
@@ -84,12 +85,27 @@ export class ProductsController {
   }
 
   @Get('batches/:batchId/export')
-  @ApiOperation({ summary: 'Export batch as CSV or ZIP containing print-ready QR codes' })
-  @ApiQuery({ name: 'format', required: false, enum: ['csv', 'zip'], description: 'Export format (csv or zip)' })
+  @ApiOperation({
+    summary:
+      'Export batch as CSV, ZIP containing QR codes, or Avery/Industrial print-ready PDF label sheets',
+  })
+  @ApiQuery({
+    name: 'format',
+    required: false,
+    enum: ['csv', 'zip', 'pdf'],
+    description: 'Export format (csv, zip, or pdf)',
+  })
+  @ApiQuery({
+    name: 'template',
+    required: false,
+    enum: ['a4-2x5', 'a4-3x8', 'avery5160'],
+    description: 'Label template layout for PDF exports (default: a4-2x5)',
+  })
   async exportBatch(
     @CurrentUser() user: any,
     @Param('batchId') batchId: string,
     @Query('format') format: string = 'csv',
+    @Query('template') template: string = 'a4-2x5',
     @Res() res: Response,
   ) {
     const orgId = user.memberships?.[0]?.organization?.id;
@@ -107,6 +123,24 @@ export class ProductsController {
       res.setHeader('Content-Type', 'application/zip');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       archiveStream.pipe(res);
+    } else if (format === 'pdf') {
+      const validTemplate: LabelTemplateType = [
+        'a4-2x5',
+        'a4-3x8',
+        'avery5160',
+      ].includes(template)
+        ? (template as LabelTemplateType)
+        : 'a4-2x5';
+
+      const { filename, pdfBuffer } = await this.productsService.exportBatchPdf(
+        orgId,
+        batchId,
+        validTemplate,
+      );
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', pdfBuffer.length.toString());
+      res.status(200).send(pdfBuffer);
     } else {
       const { filename, csvContent } = await this.productsService.exportBatchCsv(
         orgId,

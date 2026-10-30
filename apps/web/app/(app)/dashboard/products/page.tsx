@@ -21,6 +21,10 @@ import {
   FileSpreadsheet,
   FileArchive,
   X,
+  Printer,
+  FileText,
+  CheckCircle2,
+  Info,
 } from "lucide-react";
 import QRCode from "qrcode";
 import { api } from "@/lib/api-client";
@@ -66,6 +70,16 @@ export default function ProductsPage() {
     productName: string;
   } | null>(null);
 
+  // PDF Label Sheet printing modal
+  const [labelPrintModal, setLabelPrintModal] = useState<{
+    batchId: string;
+    batchNumber: string;
+    productName: string;
+    batchSize: number;
+  } | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<'a4-2x5' | 'a4-3x8' | 'avery5160'>('a4-2x5');
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
   useEffect(() => {
     fetchProducts();
   }, []);
@@ -92,14 +106,37 @@ export default function ProductsPage() {
     }));
   };
 
-  const handleExport = async (batchId: string, batchNumber: string, format: "csv" | "zip") => {
+  const handleExport = async (
+    batchId: string,
+    batchNumber: string,
+    format: "csv" | "zip" | "pdf",
+    template?: string
+  ) => {
     try {
       setExportingBatchId(`${batchId}-${format}`);
-      await api.products.downloadBatchExport(batchId, format, batchNumber);
+      await api.products.downloadBatchExport(batchId, format, batchNumber, template);
     } catch (err: any) {
       alert(`Export failed: ${err.message}`);
     } finally {
       setExportingBatchId(null);
+    }
+  };
+
+  const handleDownloadPdfSheet = async () => {
+    if (!labelPrintModal) return;
+    try {
+      setIsGeneratingPdf(true);
+      await api.products.downloadBatchExport(
+        labelPrintModal.batchId,
+        'pdf',
+        labelPrintModal.batchNumber,
+        selectedTemplate
+      );
+      setLabelPrintModal(null);
+    } catch (err: any) {
+      alert(`PDF label sheet generation failed: ${err.message}`);
+    } finally {
+      setIsGeneratingPdf(false);
     }
   };
 
@@ -328,6 +365,22 @@ export default function ProductsPage() {
                                 )}
                                 Download Print ZIP
                               </Button>
+
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  setLabelPrintModal({
+                                    batchId: batch.id,
+                                    batchNumber: batch.batchNumber,
+                                    productName: product.name,
+                                    batchSize: batch.batchSize,
+                                  })
+                                }
+                                className="bg-indigo-600 hover:bg-indigo-700 text-xs text-white"
+                              >
+                                <Printer className="w-3.5 h-3.5 mr-1" />
+                                Print Labels
+                              </Button>
                             </div>
                           </div>
                         );
@@ -397,6 +450,208 @@ export default function ProductsPage() {
               <Download className="w-4 h-4 mr-2" />
               Download Image
             </a>
+          </div>
+        </div>
+      )}
+
+      {/* Industrial PDF Label Sheet Printing Modal */}
+      {labelPrintModal && (
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => !isGeneratingPdf && setLabelPrintModal(null)}
+        >
+          <div
+            className="bg-[#0A0E27] border border-white/20 rounded-3xl p-6 sm:p-8 max-w-xl w-full text-left shadow-2xl space-y-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start">
+              <div>
+                <div className="flex items-center space-x-2">
+                  <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-400">
+                    <Printer className="w-5 h-5" />
+                  </div>
+                  <h3 className="font-bold text-xl text-white">
+                    Print Ready-to-Stick Labels
+                  </h3>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  {labelPrintModal.productName} • Batch #{labelPrintModal.batchNumber} •{" "}
+                  {labelPrintModal.batchSize.toLocaleString()} Total Units
+                </p>
+              </div>
+              <button
+                onClick={() => !isGeneratingPdf && setLabelPrintModal(null)}
+                className="p-1 rounded-lg hover:bg-white/10 text-gray-400"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Template Selector Cards */}
+            <div className="space-y-3">
+              <label className="text-xs font-semibold uppercase tracking-wider text-gray-300">
+                Choose Industrial Label Template
+              </label>
+
+              {/* Option 1: A4 2x5 */}
+              <div
+                onClick={() => setSelectedTemplate("a4-2x5")}
+                className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-start gap-4 ${
+                  selectedTemplate === "a4-2x5"
+                    ? "bg-indigo-950/40 border-indigo-500 ring-1 ring-indigo-500"
+                    : "bg-white/5 border-white/10 hover:border-white/20"
+                }`}
+              >
+                <div className="mt-0.5">
+                  <div
+                    className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                      selectedTemplate === "a4-2x5"
+                        ? "border-indigo-400 bg-indigo-600 text-white"
+                        : "border-gray-500 bg-transparent"
+                    }`}
+                  >
+                    {selectedTemplate === "a4-2x5" && (
+                      <div className="w-2 h-2 rounded-full bg-white" />
+                    )}
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-white text-sm">
+                      A4 (2 × 5 Grid) — Avery L7173
+                    </span>
+                    <Badge className="bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs">
+                      10 per sheet
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Large format (99.1 × 57 mm). Includes high-contrast QR, scratch PIN boundary foil box, batch metadata, and Kweli tamper seal.
+                  </p>
+                  <p className="text-[11px] text-indigo-400 mt-2 font-mono">
+                    Requires {Math.ceil(labelPrintModal.batchSize / 10)} sheet(s) for this batch
+                  </p>
+                </div>
+              </div>
+
+              {/* Option 2: A4 3x8 */}
+              <div
+                onClick={() => setSelectedTemplate("a4-3x8")}
+                className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-start gap-4 ${
+                  selectedTemplate === "a4-3x8"
+                    ? "bg-indigo-950/40 border-indigo-500 ring-1 ring-indigo-500"
+                    : "bg-white/5 border-white/10 hover:border-white/20"
+                }`}
+              >
+                <div className="mt-0.5">
+                  <div
+                    className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                      selectedTemplate === "a4-3x8"
+                        ? "border-indigo-400 bg-indigo-600 text-white"
+                        : "border-gray-500 bg-transparent"
+                    }`}
+                  >
+                    {selectedTemplate === "a4-3x8" && (
+                      <div className="w-2 h-2 rounded-full bg-white" />
+                    )}
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-white text-sm">
+                      A4 (3 × 8 Grid) — Avery L7159
+                    </span>
+                    <Badge className="bg-white/10 text-gray-300 border border-white/15 text-xs">
+                      24 per sheet
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Compact format (63.5 × 33.9 mm). Designed for bottles, vials, ampoules, and retail packages.
+                  </p>
+                  <p className="text-[11px] text-indigo-400 mt-2 font-mono">
+                    Requires {Math.ceil(labelPrintModal.batchSize / 24)} sheet(s) for this batch
+                  </p>
+                </div>
+              </div>
+
+              {/* Option 3: Avery 5160 */}
+              <div
+                onClick={() => setSelectedTemplate("avery5160")}
+                className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-start gap-4 ${
+                  selectedTemplate === "avery5160"
+                    ? "bg-indigo-950/40 border-indigo-500 ring-1 ring-indigo-500"
+                    : "bg-white/5 border-white/10 hover:border-white/20"
+                }`}
+              >
+                <div className="mt-0.5">
+                  <div
+                    className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                      selectedTemplate === "avery5160"
+                        ? "border-indigo-400 bg-indigo-600 text-white"
+                        : "border-gray-500 bg-transparent"
+                    }`}
+                  >
+                    {selectedTemplate === "avery5160" && (
+                      <div className="w-2 h-2 rounded-full bg-white" />
+                    )}
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-white text-sm">
+                      US Letter (3 × 10 Grid) — Avery 5160 / 5260
+                    </span>
+                    <Badge className="bg-white/10 text-gray-300 border border-white/15 text-xs">
+                      30 per sheet
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Standard US Letter format (2.625 × 1.0 in). Popular standard industrial sticker sheets.
+                  </p>
+                  <p className="text-[11px] text-indigo-400 mt-2 font-mono">
+                    Requires {Math.ceil(labelPrintModal.batchSize / 30)} sheet(s) for this batch
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Print Instructions Callout */}
+            <div className="p-3.5 rounded-xl bg-blue-950/30 border border-blue-500/20 flex items-start gap-3">
+              <Info className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+              <div className="text-xs text-blue-200/90 leading-relaxed">
+                <span className="font-semibold text-blue-300">Printer Calibration Tip:</span>{" "}
+                When sending the downloaded PDF to your printer, ensure page scaling is set to{" "}
+                <strong className="text-white">Actual Size (100%)</strong> rather than &quot;Fit to Printable Area&quot; so labels align precisely with pre-diecut sticker sheets.
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-white/10">
+              <Button
+                variant="outline"
+                disabled={isGeneratingPdf}
+                onClick={() => setLabelPrintModal(null)}
+                className="border-white/20 bg-white/5 hover:bg-white/10 text-white text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                disabled={isGeneratingPdf}
+                onClick={handleDownloadPdfSheet}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs flex items-center"
+              >
+                {isGeneratingPdf ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Generating Vector PDF...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Ready-to-Print PDF
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       )}

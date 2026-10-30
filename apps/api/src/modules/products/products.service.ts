@@ -11,6 +11,7 @@ import archiver from 'archiver';
 import { PassThrough } from 'stream';
 import { PrismaService } from '../../core/database/prisma.service';
 import { QrGeneratorService } from '../../core/qr/qr-generator.service';
+import { LabelSheetService, LabelTemplateType } from '../../core/pdf/label-sheet.service';
 import { RegisterProductDto } from './dto/register-product.dto';
 import { encryptText, decryptText } from '../../common/utils/crypto.utils';
 import { UnitStatus } from '@prisma/client';
@@ -25,6 +26,7 @@ export class ProductsService {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly qrGenerator: QrGeneratorService,
+    private readonly labelSheetService: LabelSheetService,
   ) {
     this.secretKey =
       this.configService.get<string>('JWT_SECRET') ||
@@ -402,6 +404,69 @@ export class ProductsService {
     return {
       filename: `batch-${batch.batchNumber}.zip`,
       archiveStream: passThrough,
+    };
+  }
+
+  /**
+   * Export batch as a high-resolution, print-ready PDF label sheet (Avery / Industrial template).
+   */
+  async exportBatchPdf(
+    organizationId: string,
+    batchId: string,
+    template: LabelTemplateType = 'a4-2x5',
+  ): Promise<{ filename: string; pdfBuffer: Buffer; batchNumber: string }> {
+    const batch = await this.prisma.productBatch.findFirst({
+      where: {
+        id: batchId,
+        product: { brand: { organizationId } },
+      },
+      include: {
+        product: {
+          include: { brand: true },
+        },
+        units: {
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+
+    if (!batch) {
+      throw new NotFoundException(`Batch ${batchId} not found`);
+    }
+
+    const unitItems = batch.units.map((unit) => {
+      let pin: string | null = null;
+      if (unit.scratchPinEncrypted) {
+        try {
+          pin = decryptText(unit.scratchPinEncrypted, this.secretKey);
+        } catch {
+          pin = null;
+        }
+      }
+
+      return {
+        publicSerial: unit.publicSerial,
+        scratchPin: pin,
+      };
+    });
+
+    const pdfBuffer = await this.labelSheetService.generateLabelSheetPdf({
+      brandName: batch.product.brand.name,
+      productName: batch.product.name,
+      sku: batch.product.sku,
+      batchNumber: batch.batchNumber,
+      mfgDate: batch.mfgDate,
+      expDate: batch.expDate,
+      units: unitItems,
+      frontendUrl: this.frontendUrl,
+      template,
+      includeCutMarks: true,
+    });
+
+    return {
+      filename: `labels-${batch.batchNumber}-${template}.pdf`,
+      pdfBuffer,
+      batchNumber: batch.batchNumber,
     };
   }
 }
