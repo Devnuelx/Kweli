@@ -3,104 +3,216 @@
 import { useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import Image from "next/image";
-import MobileHome from "@/public/svgs/mobile-home.svg";
+import { Users, Package, ShieldCheck, ArrowRight } from "lucide-react";
 
 const KWELI_USE_CASES = [
   {
     id: 1,
-    category: "For Brands",
-    title: "Protect your products.",
-    description: "Issue secure, immutable QR tags to every product batch. Neutralize counterfeiters and monitor supply chain integrity in real-time.",
+    category: "For Brands & Manufacturers",
+    title: "Protect your products at scale.",
+    description:
+      "Issue secure, immutable QR tags to every product batch. Neutralize counterfeiters and monitor supply chain integrity in real-time.",
+    pills: ["Tamper-proof QR", "Batch telemetry", "Counterfeit defense"],
     image: "/usecase.avif",
-    color: "bg-gray-900",
-    gradient: "from-black/90 via-black/40 to-transparent",
     accent: "bg-[#E6FA05]",
-    link: "/business"
+    link: "/business",
+    topBadge: "Batch #88229 • Secured",
+    statCard: {
+      icon: "package",
+      title: "October Batch Run",
+      subtitle: "Fri 30 Oct • 12,000 units",
+      rows: [
+        { label: "Amoxicillin 500mg", value: "8,000 Units" },
+        { label: "Lipitor 20mg", value: "4,000 Units" },
+      ],
+      totalLabel: "Total Protected",
+      totalValue: "12,000 Units",
+    },
   },
   {
     id: 2,
-    category: "For Partners & Distributors",
-    title: "Seamless operations",
-    description: "Verify bulk shipments instantly. Eliminate paperwork forgery, boost transparency, and streamline cargo clearance globally.",
+    category: "For Logistics Partners",
+    title: "Pay Your Whole Team in One Go",
+    description:
+      "Add your staff once. Each month, review the run, confirm with your PIN, and everyone is paid from the same wallet your sales come into.",
+    pills: ["Scheduled payroll", "Payslips", "One-tap retries"],
     image: "/screen2.jpg",
-    color: "bg-[#0a0715]",
-    gradient: "from-[#1d1b33] via-[#0a0715]/90 to-[#0a0715]",
     accent: "bg-[#E6FA05]",
-    link: "/business"
+    link: "/business",
+    topBadge: "#1040 • Walk-in    Delivered",
+    statCard: {
+      icon: "users",
+      title: "October payroll",
+      subtitle: "Fri 30 Oct • 12 staff",
+      rows: [
+        { label: "Tunde Adeyemi", value: "₦420,000" },
+        { label: "Kemi Okafor", value: "₦380,000" },
+      ],
+      totalLabel: "Total",
+      totalValue: "₦3,480,000",
+    },
   },
   {
     id: 3,
-    category: "For Consumers",
-    title: "Never buy a fake again",
-    description: "Scan products with the Kweli app before you buy. See its entire origin story, verify authenticity, and get rewarded just for participating.",
+    category: "For Everyday Consumers",
+    title: "Never buy a fake product again.",
+    description:
+      "Scan products with the Kweli app before you buy. See its entire origin story, verify authenticity, and get rewarded just for participating.",
+    pills: ["Instant scan", "Origin verification", "VFY rewards"],
     image: "/screen1.jpg",
-    color: "bg-[#493DE6]",
-    gradient: "from-[#3B30C5] to-[#493DE6]/80",
-    accent: "bg-white",
-    link: "#"
-  }
+    accent: "bg-blue-600",
+    link: "/scan",
+    topBadge: "#9921 • Verified Genuine",
+    statCard: {
+      icon: "shield",
+      title: "Verification & Rewards",
+      subtitle: "Fri 30 Oct • 100% Authentic",
+      rows: [
+        { label: "Origin Verification", value: "Genuine Pfizer" },
+        { label: "Hedera Consensus", value: "Confirmed" },
+      ],
+      totalLabel: "Reward Claimed",
+      totalValue: "+50 VFY Tokens",
+    },
+  },
 ];
+
+const renderStatIcon = (icon) => {
+  if (icon === "package") {
+    return <Package className="w-4 h-4 text-emerald-400" />;
+  }
+  if (icon === "shield") {
+    return <ShieldCheck className="w-4 h-4 text-blue-400" />;
+  }
+  return <Users className="w-4 h-4 text-blue-400" />;
+};
 
 const StackingCard = ({ card, index, progress, range, targetScale }) => {
   const scale = useTransform(progress, range, [1, targetScale]);
 
   return (
-    <div 
-      className="h-screen flex items-center justify-center sticky top-0"
-      style={{ zIndex: index + 1 }} 
+    <div
+      className="sticky mb-8 md:mb-0 md:h-screen md:flex md:items-center md:justify-center"
+      style={{
+        top: `calc(72px + ${index * 22}px)`,
+        zIndex: index + 1,
+      }}
     >
       <motion.div
-        style={{ 
+        style={{
           scale,
-          top: `calc(10% + ${index * 25}px)` 
+          top: `calc(8% + ${index * 24}px)`,
         }}
-        className={`relative w-full max-w-7xl h-[500px] md:h-[650px] rounded-[32px] md:rounded-[40px] shadow-2xl overflow-hidden origin-top ${card.color}`}
+        className="relative w-full max-w-7xl rounded-[28px] md:rounded-[36px] bg-white border border-gray-200/90 shadow-2xl shadow-black/5 overflow-hidden origin-top flex flex-col md:flex-row md:items-stretch"
       >
-        <div className="absolute inset-0">
-          <Image src={card.image} alt={card.title} fill className="object-cover opacity-60" />
-        </div>
-        <div className={`absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r ${card.gradient} z-10`} />
-
-        <div className="relative z-20 h-full p-8 md:p-16 flex flex-col justify-between">
-          <h3 className="text-xl md:text-3xl font-bold text-white/30 uppercase tracking-widest">
-            {card.category}
-          </h3>
-
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-10 mt-20 md:mt-0">
-            <div className="max-w-xl text-left">
-              <h2 className=" uppercase text-4xl md:text-7xl font-black text-white mb-6 tracking-widest">
-                {card.title}
-              </h2>
-              <p className="text-base text-gray-400 mb-8 max-w-lg">
-                {card.description}
-              </p>
-              <a href={card.link} className="inline-flex items-center text-white font-semibold gap-2 hover:gap-3 transition-all group">
-                Learn more 
-                <span className={`${card.accent} text-black w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ml-1 transition-transform group-hover:translate-x-1`}>
-                  →
-                </span>
-              </a>
+        {/* Top / Left: Text Content - with exact px-[28px] padding on mobile */}
+        <div className="px-[28px] pt-7 sm:pt-8 md:pt-12 pb-5 md:pb-12 md:px-12 md:w-1/2 flex flex-col justify-between">
+          <div>
+            <div className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-2 font-mono">
+              {card.category}
             </div>
 
-            {index === 0 && (
-              <div className="hidden lg:block w-[340px] bg-white/10 backdrop-blur-xl border border-white/20 rounded-[24px] p-6 text-white shadow-2xl">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-lg">📦</div>
-                  <div>
-                    <div className="font-semibold text-base">Batch #88229</div>
-                    <div className="text-[#00FC82] text-[10px] font-bold">Secured</div>
+            <h3 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold font-funnel-display text-gray-950 tracking-tight leading-[1.15] mb-3">
+              {card.title}
+            </h3>
+
+            <p className="text-sm sm:text-base text-gray-600 leading-relaxed mb-5 max-w-lg font-poppins">
+              {card.description}
+            </p>
+
+            {/* Pill Badges */}
+            <div className="flex flex-wrap gap-2 mb-6">
+              {card.pills.map((pill, pIdx) => (
+                <span
+                  key={pIdx}
+                  className="inline-flex items-center text-xs font-medium px-3.5 py-1.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200/60"
+                >
+                  {pill}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <a
+              href={card.link}
+              className="inline-flex items-center text-gray-900 font-semibold gap-2 hover:text-indigo-600 transition-colors group text-sm sm:text-base font-poppins"
+            >
+              Learn more
+              <span className="w-7 h-7 rounded-full bg-gray-950 text-white flex items-center justify-center text-xs font-bold transition-transform group-hover:translate-x-1">
+                →
+              </span>
+            </a>
+          </div>
+        </div>
+
+        {/* Bottom / Right: Image Content - with exact px-[12px] pb-[12px] padding on mobile */}
+        <div className="px-[12px] pb-[12px] md:p-3 md:w-1/2 flex flex-col justify-center">
+          <div className="relative w-full h-[360px] sm:h-[400px] md:h-full md:min-h-[460px] rounded-[20px] overflow-hidden bg-gray-950 shadow-inner">
+            <Image
+              src={card.image}
+              alt={card.title}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 50vw"
+            />
+            {/* Subtle Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/20" />
+
+            {/* Top Right Tag (e.g. #1040 • Walk-in Delivered) */}
+            <div className="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 z-10 bg-black/60 backdrop-blur-md border border-white/20 text-white text-xs font-medium px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-lg font-mono">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>{card.topBadge}</span>
+            </div>
+
+            {/* Floating Glassmorphic Stat Card (matching Figma payroll/manifest card) */}
+            <div className="absolute bottom-3.5 left-3.5 right-3.5 sm:bottom-5 sm:left-5 sm:right-5 z-10 bg-[#0B1028]/85 backdrop-blur-xl border border-white/15 rounded-2xl p-4 sm:p-5 text-white shadow-2xl">
+              {/* Header */}
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
+                  {renderStatIcon(card.statCard.icon)}
+                </div>
+                <div>
+                  <div className="font-semibold text-sm sm:text-base text-white">
+                    {card.statCard.title}
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    {card.statCard.subtitle}
                   </div>
                 </div>
               </div>
-            )}
-            
-            {index === 2 && (
-              <div className="hidden lg:flex w-[320px] bg-[#2A229E]/90 backdrop-blur-xl border border-white/10 rounded-[24px] p-8 flex-col justify-between text-white shadow-2xl">
-                 <div className="text-[3rem] font-bold text-white leading-none">
-                    1,250 <span className="text-2xl text-[#00FC82] font-mono">VFY</span>
-                 </div>
+
+              {/* Divider */}
+              <div className="border-t border-white/10 my-3" />
+
+              {/* Rows */}
+              <div className="space-y-2">
+                {card.statCard.rows.map((row, rIdx) => (
+                  <div
+                    key={rIdx}
+                    className="flex items-center justify-between text-xs sm:text-sm"
+                  >
+                    <span className="text-gray-300">{row.label}</span>
+                    <span className="font-semibold font-mono text-white">
+                      {row.value}
+                    </span>
+                  </div>
+                ))}
               </div>
-            )}
+
+              {/* Divider */}
+              <div className="border-t border-white/10 my-3" />
+
+              {/* Total Row */}
+              <div className="flex items-center justify-between text-xs sm:text-sm pt-0.5">
+                <span className="text-gray-300 font-medium">
+                  {card.statCard.totalLabel}
+                </span>
+                <span className="font-bold font-mono text-white text-sm sm:text-base">
+                  {card.statCard.totalValue}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </motion.div>
@@ -203,13 +315,16 @@ export default function UseCases() {
       </section>
 
 
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 text-center">
-        <h2 className="text-4xl  md:text-5xl lg:text-[4rem] font-bold font-funnel-display text-[#1a1615] tracking-tight">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 text-center mb-12">
+        <h2 className="text-4xl md:text-5xl lg:text-[4rem] font-bold font-funnel-display text-[#1a1615] tracking-tight">
           Who is Kweli for?
         </h2>
+        <p className="text-gray-500 text-base md:text-lg mt-4 max-w-2xl mx-auto font-poppins">
+          Tailored security, verification, and settlement workflows across the entire supply chain.
+        </p>
       </div>
 
-      <div ref={container} className="relative lg:px-8 h-[300vh]">
+      <div ref={container} className="relative px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto h-[300vh]">
         {KWELI_USE_CASES.map((card, index) => {
           const targetScale = 1 - (KWELI_USE_CASES.length - index) * 0.05;
           return (
